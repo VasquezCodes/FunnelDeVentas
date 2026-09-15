@@ -282,7 +282,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
           fotograma. Contenedor de consulta: la moneda va al lado del libro
           cuando la hoja es ancha y encima cuando es estrecha. */}
       <div data-entrada-velo className="@container px-5 pt-6 pb-6">
-        <div className="grid grid-cols-1 items-center gap-8 @[46rem]:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] @[46rem]:gap-14">
+        <div className="grid grid-cols-1 items-center gap-8 @[56rem]:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] @[56rem]:gap-14">
           <figure className="mx-auto w-full max-w-76">
             <Moneda
               arcos={arcos}
@@ -487,6 +487,10 @@ function Moneda({
  * todo lo demás se desvanece en su sitio —sin mover nada— y vuelve al
  * soltar. Al señalar una fila del propio libro, las otras solo se apagan: si
  * desaparecieran, no quedaría adónde llevar el ratón.
+ *
+ * En una hoja estrecha se quedan el real y el plan. La columna de
+ * cumplimiento y los iconos no caben —la tabla se salía de la tarjeta— y el
+ * cumplimiento del total ya lo dice la moneda.
  */
 function LibroCuentas({
   grupos,
@@ -519,7 +523,10 @@ function LibroCuentas({
           Ingreso{mes ? ` de ${mes}` : ''} por partida: real, plan y cumplimiento.
         </caption>
         <thead>
-          <tr className="text-xs text-muted-foreground">
+          {/* La raya bajo la cabecera es de la cabecera: se queda cuando el
+              libro se aísla en una partida. En bordes colapsados comparte
+              línea con la raya del primer bloque, y gana la de arriba. */}
+          <tr className="border-b text-xs text-muted-foreground" style={{ borderColor: 'var(--regla)' }}>
             <th scope="col" className="pb-2.5 text-left font-normal">
               <span className="sr-only">Partida</span>
             </th>
@@ -529,7 +536,7 @@ function LibroCuentas({
             <th scope="col" className="pb-2.5 pl-3 text-right font-normal">
               Plan
             </th>
-            <th scope="col" className="pb-2.5 pl-5 text-right font-normal">
+            <th scope="col" className="pb-2.5 pl-5 text-right font-normal @max-[26rem]:hidden">
               Cumplimiento
             </th>
           </tr>
@@ -540,12 +547,19 @@ function LibroCuentas({
           return (
             <tbody key={g.grupo}>
               <tr
-                className="border-t transition-opacity duration-200"
-                style={{ borderColor: 'var(--regla)', opacity: aislar ? 0 : undefined }}
+                className="border-t transition-[opacity,border-color] duration-200"
+                style={{
+                  // La raya se apaga aparte: en una tabla de bordes colapsados
+                  // no se desvanece con la opacidad de su fila.
+                  borderColor: aislar ? 'transparent' : 'var(--regla)',
+                  opacity: aislar ? 0 : undefined,
+                }}
               >
                 <th scope="rowgroup" className="py-3 text-left font-medium text-foreground">
                   <span className="flex items-center gap-2.5">
-                    <IconoEnPastilla Icono={definicion.Icono} color={definicion.color} tamano="sm" />
+                    <span className="@max-[26rem]:hidden">
+                      <IconoEnPastilla Icono={definicion.Icono} color={definicion.color} tamano="sm" />
+                    </span>
                     <span className="min-w-0">
                       <span className="block leading-snug">{definicion.nombre}</span>
                       {g.cuota !== null && (
@@ -569,7 +583,7 @@ function LibroCuentas({
                 <td className="py-3 pl-3 text-right text-muted-foreground">
                   {importe(g.punto.plan)}
                 </td>
-                <td className="py-3 pl-5 text-right">
+                <td className="py-3 pl-5 text-right @max-[26rem]:hidden">
                   <Cumplimiento valor={g.punto.cumplimiento} color={definicion.color} />
                 </td>
               </tr>
@@ -589,7 +603,9 @@ function LibroCuentas({
                   >
                     <th scope="row" className="py-2 pl-4 text-left font-normal text-foreground">
                       <span className="flex items-center gap-2.5">
-                        <IconoEnPastilla Icono={p.Icono} color={p.color} tamano="sm" />
+                        <span className="@max-[26rem]:hidden">
+                          <IconoEnPastilla Icono={p.Icono} color={p.color} tamano="sm" />
+                        </span>
                         <span className="leading-snug">{p.nombre}</span>
                       </span>
                     </th>
@@ -605,7 +621,7 @@ function LibroCuentas({
                     <td className="py-2 pl-3 text-right text-muted-foreground">
                       {importe(p.plan)}
                     </td>
-                    <td className="py-2 pl-5 text-right">
+                    <td className="py-2 pl-5 text-right @max-[26rem]:hidden">
                       <Cumplimiento valor={p.cumplimiento} color={p.color} />
                     </td>
                   </tr>
@@ -619,9 +635,11 @@ function LibroCuentas({
             abajo, como en un libro de contabilidad. */}
         <tfoot>
           <tr
-            className="border-t border-b-[3px] border-double transition-opacity duration-200"
+            className="border-t border-b-[3px] border-double transition-[opacity,border-color] duration-200"
             style={{
-              borderColor: 'color-mix(in oklab, var(--foreground) 55%, transparent)',
+              borderColor: aislar
+                ? 'transparent'
+                : 'color-mix(in oklab, var(--foreground) 55%, transparent)',
               opacity: aislar ? 0 : undefined,
             }}
           >
@@ -639,7 +657,7 @@ function LibroCuentas({
               </span>
             </td>
             <td className="py-3 pl-3 text-right text-muted-foreground">{importe(planTotal)}</td>
-            <td className="py-3 pl-5 text-right">
+            <td className="py-3 pl-5 text-right @max-[26rem]:hidden">
               <Cumplimiento valor={total.cumplimiento} color="var(--dinero-1)" fuerte />
             </td>
           </tr>
@@ -651,9 +669,9 @@ function LibroCuentas({
 
 /**
  * El cumplimiento de una fila: una barra fina (el real sobre su plan, que es
- * la pista entera) y el porcentaje. En una hoja estrecha queda solo el
- * porcentaje. Sin color de semáforo: el juicio lo da la etiqueta de la
- * moneda.
+ * la pista entera) y el porcentaje. En una hoja estrecha no se pinta: se
+ * oculta la columna entera. Sin color de semáforo: el juicio lo da la
+ * etiqueta de la moneda.
  */
 function Cumplimiento({
   valor,
@@ -668,7 +686,7 @@ function Cumplimiento({
     <span className="inline-flex items-center justify-end gap-2.5">
       <span
         aria-hidden="true"
-        className="relative h-1 w-14 overflow-hidden rounded-full @max-[26rem]:hidden"
+        className="relative h-1 w-14 overflow-hidden rounded-full"
         style={{ backgroundColor: 'color-mix(in oklab, var(--serie-plan) 26%, transparent)' }}
       >
         {valor !== null && valor > 0 && (

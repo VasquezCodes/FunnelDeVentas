@@ -469,7 +469,7 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
         ficha.colocacion,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="flex min-w-0 items-center gap-2.5 text-[0.8125rem] leading-5 font-medium text-foreground">
           {Icono && <IconoEnPastilla Icono={Icono} color={ficha.color} tamano="sm" />}
           <span className="truncate">{ficha.titulo}</span>
@@ -479,7 +479,6 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
           etiqueta={ETIQUETAS_ESTADO[punto.estado]}
           cumplimiento={punto.cumplimiento}
           tamano="sm"
-          className="mt-0.5"
         />
       </div>
 
