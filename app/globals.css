@@ -1,26 +1,509 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Tokens propios expuestos a Tailwind */
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-wine: var(--wine);
+  --color-serie-plan: var(--serie-plan);
+  --color-serie-real: var(--serie-real);
+  --color-estado-ok: var(--estado-ok);
+  --color-estado-alerta: var(--estado-alerta);
+  --color-estado-critico: var(--estado-critico);
+  --color-estado-neutro: var(--estado-neutro);
+  --color-canal-1: var(--canal-1);
+  --color-canal-2: var(--canal-2);
+  --color-canal-3: var(--canal-3);
+  --color-metrica-carmin: var(--metrica-carmin);
+  --color-metrica-verde: var(--metrica-verde);
+  --color-metrica-azul: var(--metrica-azul);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ══════════════════════════════════════════════════════════════════
+   MODO CLARO — sistema de marca Bastida & Farina
+   Los tres colores de marca (#BD0842 carmín, #54123D vino, #1D1D1B
+   tinta) vienen del manual oficial. El carmín es cromo de marca y,
+   desde el rediseño de los gráficos (2026-09-14), también identidad
+   de la familia del embudo (--metrica-carmin). El juicio
+   sigue siendo SOLO del semáforo, que va siempre con icono y palabra:
+   una barra carmín es «marca», nunca «crítico».
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #faf7f5; /* papel cálido */
+  --foreground: #1d1d1b; /* tinta */
+  --card: #ffffff;
+  --card-foreground: #1d1d1b;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1b;
+  --primary: #bd0842; /* carmín — acción de marca */
+  --primary-foreground: #ffffff;
+  --secondary: #f4efec;
+  --secondary-foreground: #1d1d1b;
+  --muted: #f4efec;
+  --muted-foreground: #7a716b;
+  --accent: #f4efec; /* hover neutro de shadcn, no es el acento de marca */
+  --accent-foreground: #1d1d1b;
+  --destructive: #a0073a;
+  --border: #e3dcd8;
+  --input: #e3dcd8;
+  --ring: #bd0842;
+  --radius: 0.625rem;
+
+  /* ── Filetes ─────────────────────────────────────────────────────
+     El tablero es una hoja reglada: el filete no es decoración, es lo
+     que separa un capítulo de otro y una fila de la siguiente. A
+     1,18:1 —lo que había— era invisible y la estructura se perdía.
+     Dos pesos, porque son dos cosas distintas:
+       regla      1,69:1  separa secciones
+       regla-fina 1,36:1  separa renglones dentro de una sección */
+  --regla: #cdc6c1;
+  --regla-fina: #e3dcd8;
+
+  /* Marca */
+  --brand: #bd0842;
+  --brand-strong: #a0073a;
+  --wine: #54123d;
+  --muted-surface: #f4efec;
+
+  /* ── Series de datos (identidad: plan vs. real) ──────────────────
+     Neutras a propósito. El plan es la referencia y se retira; el
+     real es lo que se lee. El juicio lo carga el semáforo, no la
+     serie: así el color nunca dice dos cosas a la vez.
+
+     El plan estaba en #cabfb8 y medía 1,80:1 contra la tarjeta —por
+     debajo del suelo de 2:1—, así que la barra de referencia
+     desaparecía. Y la comparación plan/real es LA lectura de esta
+     herramienta: si no se ve el plan, no hay nada que comparar.
+     Ahora mide 2,68:1: sigue retirándose frente a la tinta (16,9:1),
+     pero se ve. */
+  --serie-plan: #a79c95;
+  --serie-real: #1d1d1b;
+  --serie-plan-suave: #cfc7c1;
+
+  /* ── Estado / semáforo (reservados) ──────────────────────────────
+     Mismos valores que el resto del ecosistema, para que quien ya
+     usa las herramientas internas los lea igual sin reaprender. */
+  --estado-ok: #157f5b;
+  --estado-alerta: #b5760a;
+  --estado-critico: #a0073a;
+  --estado-neutro: #9a938d;
+  --estado-ok-suave: #e6f2ec;
+  --estado-alerta-suave: #fbf1de;
+  --estado-critico-suave: #f9e7ec;
+
+  /* Gráficas: escala neutra, del claro al oscuro.
+     Un solo tono cálido (h≈56 en OKLCH, 5° de dispersión) con saltos de
+     luminosidad regulares. El extremo claro se bajó de #cabfb8 a #b9afa8
+     para que despegue del papel: a 2,02:1 se ve, a 1,69:1 no se veía. */
+  --chart-1: #1d1d1b;
+  --chart-2: #55504c;
+  --chart-3: #7a716b;
+  --chart-4: #a0968f;
+  --chart-5: #b9afa8;
+
+  /* ── Canales de captación ────────────────────────────────────────
+     Rampa de un solo tono, anclada en el vino de marca (#54123D) y
+     desplazada hacia el violeta. El desplazamiento no es estético: el
+     vino puro se confunde con el rojo crítico (#A0073A) —11,5 de
+     separación medida, por debajo del suelo de 15— y una barra de canal
+     no puede leerse como una alarma. Así medido queda en 15,9.
+
+     Es una rampa ordinal, no siete colores categóricos: los canales
+     están siempre en el mismo orden de volumen (77 / 20 / 3), y de los
+     siete que define el plan solo tres llevan cifra. Tres tonos de un
+     mismo tono se ordenan solos; siete hues inventados serían un
+     arcoíris que además chocaría con el semáforo.
+
+     El carmín sigue fuera: es cromo de marca y acción, nunca un dato.
+
+     BANDA MEDIA, no todo el rango. La primera versión iba de 14,3:1 a
+     2,6:1, es decir de casi tinta a casi papel: el canal grande competía
+     con la serie real (16,9:1) y el pequeño se perdía en el fondo. Sobre
+     un fondo claro los dos extremos ya están ocupados. Ahora la rampa vive
+     entre 8,3:1 y 3,1:1 — se lee como una familia propia, distinta de la
+     tinta y del papel, y hasta el canal más pequeño pasa el 3:1 que pide
+     una marca de dato. */
+  --canal-1: #6d3783;
+  --canal-2: #9153ab;
+  --canal-3: #ad7cc2;
+
+  /* Lo que va DENTRO de un tramo de canal (icono, nombre e importe del
+     aluvial de Canales): el color que contrasta con su relleno. Blanco
+     sobre los dos vinos oscuros (8,3:1 y 5,2:1); tinta sobre el lila
+     (#ad7cc2), porque el blanco daba 3,3:1, que vale para un icono pero no
+     para un texto. */
+  --canal-1-sobre: #ffffff;
+  --canal-2-sobre: #ffffff;
+  --canal-3-sobre: #1d1d1b;
+
+  /* ── El dinero: una rampa ordinal de un solo verde ──────────────────
+     Del dinero más seguro (la mensualidad de FLECHA, el tono más marcado)
+     al más variable (otros ingresos). La usa la moneda de Dinero, en el
+     anillo y en las pastillas del libro de cuentas. Validada como rampa
+     ordinal: un tono (5° de dispersión), luminosidad monótona, saltos
+     ≥ 0,06 y extremo claro a 2,16:1 sobre la tarjeta. */
+  --dinero-1: #164f2a;
+  --dinero-2: #23703a;
+  --dinero-3: #2e8b3d;
+  --dinero-4: #52a660;
+  --dinero-5: #7fbf89;
+
+  /* ── Métricas: un color por familia de indicador ──────────────────
+     El usuario pidió que los gráficos llevaran el carmín de marca y
+     algo de verde y azul. Se asigna por FAMILIA, no por gráfico, para
+     que el mismo indicador tenga el mismo color en la Serie y en su
+     panel: embudo (leads, ventas) en carmín, dinero en verde y
+     captación/costes en azul. El trío pasa las cinco comprobaciones
+     de paleta categórica sobre la tarjeta blanca (peor par ΔE 23,4 en
+     deuteranopia; todos por encima de 3:1). */
+  --metrica-carmin: #bd0842;
+  --metrica-verde: #2e8b3d;
+  --metrica-azul: #2a78d6;
+
+  /* Superficies del chasis */
+  --sidebar: #f4efec;
+  --sidebar-foreground: #1d1d1b;
+  --sidebar-primary: #bd0842;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ece4df;
+  --sidebar-accent-foreground: #1d1d1b;
+  --sidebar-border: #e4dcd7;
+  --sidebar-ring: #bd0842;
+
+  /* Rejilla y ejes: deben retirarse, no competir */
+  --grid-line: #ddd6d1;
+
+  /* Tipografía */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Movimiento — nunca linear ni ease-in-out */
+  --ease-fluid: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Sombra ambiental difusa (nunca sombras duras) */
+  --sombra-tray: 0 1px 2px rgba(29, 29, 27, 0.04), 0 8px 24px -14px rgba(29, 29, 27, 0.14);
+  --sombra-alta: 0 2px 4px rgba(29, 29, 27, 0.05), 0 16px 40px -18px rgba(29, 29, 27, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODO OSCURO — elegido paso a paso desde las mismas rampas.
+   No es una inversión automática: cada valor está recalculado contra
+   el fondo oscuro para conservar contraste y que el acento siga vivo.
+   ══════════════════════════════════════════════════════════════════ */
+.dark {
+  --background: #14100f;
+  --foreground: #f2edea;
+  --card: #1c1817;
+  --card-foreground: #f2edea;
+  --popover: #1c1817;
+  --popover-foreground: #f2edea;
+  --primary: #e8447a;
+  --primary-foreground: #14100f;
+  --secondary: #262120;
+  --secondary-foreground: #f2edea;
+  --muted: #262120;
+  --muted-foreground: #a89e97;
+  --accent: #262120;
+  --accent-foreground: #f2edea;
+  --destructive: #e8607f;
+  --border: #302a28;
+  --input: #302a28;
+  --ring: #e8447a;
+
+  --brand: #e8447a;
+  --brand-strong: #f26c96;
+  --wine: #9c5a84;
+  --muted-surface: #262120;
+
+  /* Mismo arreglo que en claro: el plan estaba a 1,91:1 sobre la tarjeta
+     oscura y la barra de referencia no se leía. Ahora 2,92:1. */
+  --serie-plan: #6a615c;
+  --serie-real: #f2edea;
+  --serie-plan-suave: #3d3733;
+
+  --estado-ok: #4cb98a;
+  --estado-alerta: #dda63f;
+  --estado-critico: #ef7089;
+  --estado-neutro: #8c837e;
+  --estado-ok-suave: #16302a;
+  --estado-alerta-suave: #33280f;
+  --estado-critico-suave: #3a1b23;
+
+  --chart-1: #f2edea;
+  --chart-2: #bdb3ad;
+  --chart-3: #8c837e;
+  --chart-4: #635b57;
+  --chart-5: #423b38;
+
+  /* La rampa de canal se re-ancla, no se invierte: sobre fondo oscuro el
+     paso más oscuro del modo claro cae a 1,23:1 y desaparece. Estos tres
+     pasos se eligieron contra #1c1817 y vuelven a pasar los cuatro
+     controles de rampa (monotonía, salto, contraste del extremo, un solo
+     tono). El canal de más volumen sigue siendo el más contrastado. */
+  --canal-1: #d9bce6;
+  --canal-2: #a874c4;
+  --canal-3: #7a4a94;
+
+  /* En oscuro los dos primeros tonos son claros: encima va el color de la
+     tarjeta (4,9:1 sobre #a874c4); sobre el tercero, blanco (6,5:1). */
+  --canal-1-sobre: #1c1817;
+  --canal-2-sobre: #1c1817;
+  --canal-3-sobre: #ffffff;
+
+  /* La rampa del dinero se re-ancla, no se invierte a ciegas: sobre fondo
+     oscuro lo marcado es lo CLARO, así que la mensualidad de FLECHA sigue
+     siendo el tono más visible. Extremo oscuro a 2,21:1 sobre #1c1817. */
+  --dinero-1: #9fd9a8;
+  --dinero-2: #6fc27c;
+  --dinero-3: #43a150;
+  --dinero-4: #2f7d3b;
+  --dinero-5: #235c2c;
+
+  /* Métricas en oscuro: mismo trío, subido para la banda oscura. El
+     verde #2e8b3d se quedaba fuera de banda (L 0,69 con #4fb35d era
+     demasiado claro); #43a150 pasa las cinco comprobaciones. */
+  --metrica-carmin: #e8447a;
+  --metrica-verde: #43a150;
+  --metrica-azul: #3987e5;
+
+  --sidebar: #1c1817;
+  --sidebar-foreground: #f2edea;
+  --sidebar-primary: #e8447a;
+  --sidebar-primary-foreground: #14100f;
+  --sidebar-accent: #262120;
+  --sidebar-accent-foreground: #f2edea;
+  --sidebar-border: #302a28;
+  --sidebar-ring: #e8447a;
+
+  --grid-line: #332c2a;
+  --regla: #3a3230;
+  --regla-fina: #2b2523;
+
+  --sombra-tray: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -14px rgba(0, 0, 0, 0.7);
+  --sombra-alta: 0 2px 4px rgba(0, 0, 0, 0.45), 0 16px 40px -18px rgba(0, 0, 0, 0.8);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    /* Ninguna página de este tablero hace scroll lateral. El desbordamiento
+       horizontal, cuando lo hay, vive SIEMPRE dentro de su contenedor: la
+       gráfica ancha, la tabla que no cabe, la vía del carrusel.
+       `clip` y no `hidden`: hidden convertiría el <html> en un contenedor de
+       scroll y rompería el `position: sticky` de la barra superior. */
+    overflow-x: clip;
+  }
+  /* Todo en rem: al escalar la raíz crece la interfaz entera de forma
+     uniforme en monitores grandes. Móvil sin cambios. */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 108%;
+    }
+  }
+  @media (min-width: 1536px) {
+    html {
+      font-size: 114%;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* ── Doble bisel ────────────────────────────────────────────────
+     Bandeja exterior + núcleo interior con radios concéntricos.
+     El contenedor no se apoya plano sobre el fondo: se aloja. */
+  .bandeja {
+    background: color-mix(in oklab, var(--foreground) 4%, transparent);
+    border: 1px solid color-mix(in oklab, var(--foreground) 7%, transparent);
+    border-radius: 1.25rem;
+    padding: 0.3125rem;
+    box-shadow: var(--sombra-tray);
+  }
+  .nucleo {
+    background: var(--card);
+    border-radius: calc(1.25rem - 0.3125rem);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 55%, transparent);
+    height: 100%;
+  }
+  .dark .nucleo {
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
+  }
+
+  /* ── La hoja ────────────────────────────────────────────────────
+     El tablero no es una rejilla de tarjetas: es una hoja reglada, como
+     un libro de cuentas. Cada sección se separa con un filete y lleva su
+     clave en el margen izquierdo, donde el ojo la encuentra sin que
+     compita con el dato.
+
+     Por qué no tarjetas: una tarjeta dice «objeto aparte». Veinte
+     tarjetas iguales, con el mismo radio y la misma sombra, no dicen
+     nada — solo trocean. El doble bisel se reserva para UNA cosa en toda
+     la página, el veredicto, y así vuelve a significar algo. */
+  .seccion-hoja {
+    border-top: 1px solid var(--regla);
+    padding-top: 1.5rem;
+  }
+
+  /* Clave de sección en el margen. En pantallas anchas se sale a la
+     izquierda del contenido; por debajo se apila encima. */
+  .clave-margen {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 1100px) {
+    .clave-margen {
+      grid-template-columns: 8.5rem 1fr;
+      gap: 2rem;
+    }
+  }
+
+  /* Filete entre filas de datos. Más tenue que el de sección: separa
+     renglones, no capítulos. */
+  .renglon {
+    border-top: 1px solid var(--regla-fina);
+  }
+
+  /* Etiqueta microscópica que precede a un bloque */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    font-weight: 500;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  /* Toda cifra que se alinee en columna o cambie al vuelo. Sin esto
+     los números bailan al cambiar de periodo. */
+  .cifra {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  .transicion-fluida {
+    transition-timing-function: var(--ease-fluid);
+  }
+
+  /* Grano de película: superficie fija, jamás sobre contenido que
+     hace scroll (repintaría la GPU en cada frame). */
+  .grano::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.028;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrada breve y sólo al cargar. Un tablero se abre para leer una
+   cifra: nada espera a un scroll para hacerse visible. */
+.aparecer {
+  animation: aparecer 0.4s var(--ease-soft) both;
+}
+
+/* Gráficos con entrada dibujada: el HTML del servidor trae el gráfico ya
+   terminado, y entre que se pinta y que hidrata pasan cientos de
+   milisegundos. Sin esto se vería la cifra y las barras finales, luego
+   desaparecerían y se volverían a dibujar desde cero. Mientras la tarjeta
+   lleve `data-entrada-pendiente`, su velo (trazado y cifra clave) se
+   oculta; `useEntradaGrafico` quita el atributo en cuanto toma el mando.
+   Solo con movimiento permitido: a quien pidió quietud se le enseña el
+   estado final desde el primer pintado. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-entrada-pendiente] [data-entrada-velo] {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    /* El retardo hay que anularlo también, y no es un detalle.
+       `.aparecer` usa fill-mode `both`: mientras corre el retardo, el
+       elemento se queda en el fotograma inicial, que es opacity 0. Con la
+       duración a 0,01 ms pero un retardo de 240 ms intacto, quien pide
+       menos movimiento se encuentra media página en blanco durante un
+       cuarto de segundo — y si algo se lo interrumpe, para siempre.
+       Reducir el movimiento significa enseñar el contenido antes, no
+       esconderlo igual pero más rápido. */
+    animation-delay: 0ms !important;
+    transition-delay: 0ms !important;
+  }
 }
