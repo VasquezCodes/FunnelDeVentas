@@ -22,12 +22,22 @@
  * con la raya simple de la suma y la doble de la contabilidad. La moneda
  * dice cuánto; el libro, de dónde.
  *
- * ── Color ───────────────────────────────────────────────────────────────
- * Una rampa de un solo verde (`--dinero-1` a `--dinero-5`), validada como
- * rampa ordinal en los dos temas: del dinero más seguro (la mensualidad de
- * FLECHA, el tono más marcado) al más variable (otros ingresos). Cada
- * partida lleva su tono en el anillo y en su pastilla del libro. El juicio
- * lo emite la etiqueta de estado, con icono y palabra.
+ * ── Color: del rojo al verde ────────────────────────────────────────────
+ * El anillo toma el color de lo cerca que está el mes de su plan: rojo por
+ * debajo del 80 %, ámbar hasta el 95 %, verde después y un verde más intenso
+ * al cumplirlo entero (`lib/color-cumplimiento.ts`, con los umbrales del
+ * semáforo, así que el color y la palabra del centro nunca se contradicen).
+ * Lo pidió el usuario: «arrancar en rojo, amarillo, verde, más verde
+ * mientras más cerca del plan». Con la captura quincena a quincena, el
+ * anillo va cambiando de color a medida que entra el dinero.
+ *
+ * Hubo una versión con un degradado a lo largo del recorrido. Se descartó
+ * antes de enseñarla: un mes al 130 % pintaba de rojo más de la mitad del
+ * anillo, y un buen mes se leía como una alarma.
+ *
+ * Las barras de cumplimiento del libro toman el color de su propia franja.
+ * Las pastillas conservan la rampa de verdes (`--dinero-1` a `--dinero-5`):
+ * son identidad de la partida, no juicio.
  *
  * ── Movimiento ──────────────────────────────────────────────────────────
  * GSAP (`construirEntrada`): el canto se acuña en un barrido, el anillo se
@@ -64,6 +74,7 @@ import {
   formatearValor,
 } from '@/lib/comparacion'
 import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
+import { colorDeCumplimiento, colorEnPosicion } from '@/lib/color-cumplimiento'
 import { cn } from '@/lib/utils'
 
 // ── Modelo ──────────────────────────────────────────────────────────────
@@ -292,6 +303,11 @@ export function Dinero({ serie, periodoId }: DineroProps) {
               resaltada={resalte?.id ?? null}
               onResaltar={(id) => setResalte(id === null ? null : { id, desde: 'moneda' })}
               etiqueta={`Ingreso del mes: ${lecturaTotal.cifra}, ${lecturaTotal.relacion}; ${ETIQUETAS_ESTADO[total.estado]}.`}
+              color={
+                total.cumplimiento === null
+                  ? colorDeCumplimiento(null)
+                  : colorEnPosicion(total.cumplimiento)
+              }
             >
               <p className="text-[0.6875rem] text-muted-foreground">Ingreso del mes</p>
               <p
@@ -331,7 +347,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
                       strokeDasharray="3 4"
                     />
                   ) : (
-                    <line x1="0" x2="24" y1="4" y2="4" stroke="var(--dinero-2)" strokeWidth={3} />
+                    <line x1="0" x2="24" y1="4" y2="4" stroke="var(--estado-ok-fuerte)" strokeWidth={3} />
                   )}
                 </svg>
                 <span className="tabular-nums">
@@ -368,12 +384,15 @@ function Moneda({
   resaltada,
   onResaltar,
   etiqueta,
+  color,
   children,
 }: {
   arcos: Arco[]
   resaltada: string | null
   onResaltar: (id: string | null) => void
   etiqueta: string
+  /** El color del anillo: el de lo cerca que está el mes de su plan. */
+  color: string
   children: ReactNode
 }) {
   return (
@@ -411,7 +430,7 @@ function Moneda({
           cy={C}
           r={R_ANILLO}
           fill="none"
-          stroke="color-mix(in oklab, var(--dinero-3) 9%, transparent)"
+          stroke="color-mix(in oklab, var(--foreground) 5%, transparent)"
           strokeWidth={GROSOR_ANILLO}
         />
         <circle
@@ -446,7 +465,8 @@ function Moneda({
           })}
         </g>
 
-        {/* El real, partida a partida, en el sentido de las agujas. */}
+        {/* El real, partida a partida, en el sentido de las agujas, todo en
+            el color de lo cerca que está el mes de su plan. */}
         {arcos.map((arco) =>
           arco.hasta - arco.desde > HUECO_GRADOS ? (
             <path
@@ -454,11 +474,11 @@ function Moneda({
               data-segmento={arco.pieza.indice}
               d={trazoArco(R_ANILLO, arco.desde + HUECO_GRADOS / 2, arco.hasta - HUECO_GRADOS / 2)}
               fill="none"
-              stroke={arco.pieza.color}
               strokeWidth={GROSOR_ANILLO}
               strokeLinecap="butt"
-              className="transition-opacity duration-200"
+              className="transition-[opacity,stroke] duration-500"
               style={{
+                stroke: color,
                 opacity: resaltada !== null && resaltada !== arco.pieza.id ? 0.25 : undefined,
               }}
               onPointerEnter={() => onResaltar(arco.pieza.id)}
@@ -585,7 +605,7 @@ function LibroCuentas({
                   {importe(g.punto.plan)}
                 </td>
                 <td className="py-3 pl-5 text-right @max-[26rem]:hidden">
-                  <Cumplimiento valor={g.punto.cumplimiento} color={definicion.color} />
+                  <Cumplimiento valor={g.punto.cumplimiento} />
                 </td>
               </tr>
               {g.piezas.map((p) => {
@@ -623,7 +643,7 @@ function LibroCuentas({
                       {importe(p.plan)}
                     </td>
                     <td className="py-2 pl-5 text-right @max-[26rem]:hidden">
-                      <Cumplimiento valor={p.cumplimiento} color={p.color} />
+                      <Cumplimiento valor={p.cumplimiento} />
                     </td>
                   </tr>
                 )
@@ -659,7 +679,7 @@ function LibroCuentas({
             </td>
             <td className="py-3 pl-3 text-right text-muted-foreground">{importe(planTotal)}</td>
             <td className="py-3 pl-5 text-right @max-[26rem]:hidden">
-              <Cumplimiento valor={total.cumplimiento} color="var(--dinero-1)" fuerte />
+              <Cumplimiento valor={total.cumplimiento} fuerte />
             </td>
           </tr>
         </tfoot>
@@ -671,18 +691,11 @@ function LibroCuentas({
 /**
  * El cumplimiento de una fila: una barra fina (el real sobre su plan, que es
  * la pista entera) y el porcentaje. En una hoja estrecha no se pinta: se
- * oculta la columna entera. Sin color de semáforo: el juicio lo da la
- * etiqueta de la moneda.
+ * oculta la columna entera. La barra lleva el color de su franja, el mismo
+ * que el anillo tendría a esa altura: rojo, ámbar o verde.
  */
-function Cumplimiento({
-  valor,
-  color,
-  fuerte = false,
-}: {
-  valor: number | null
-  color: string
-  fuerte?: boolean
-}) {
+function Cumplimiento({ valor, fuerte = false }: { valor: number | null; fuerte?: boolean }) {
+  const color = colorDeCumplimiento(valor)
   return (
     <span className="inline-flex items-center justify-end gap-2.5">
       <span
@@ -713,9 +726,16 @@ function LeyendaDinero() {
   return (
     <div className="flex items-center gap-4 text-xs">
       <span className="flex items-center gap-2 text-foreground">
-        <svg aria-hidden="true" width="22" height="8" className="shrink-0">
-          <line x1="0" x2="22" y1="4" y2="4" stroke="var(--dinero-2)" strokeWidth={4} />
-        </svg>
+        {/* La muestra del real dice su escala: el anillo va del rojo al verde
+            según lo cerca que esté del plan. */}
+        <span
+          aria-hidden="true"
+          className="h-1 w-6 shrink-0 rounded-full"
+          style={{
+            background:
+              'linear-gradient(90deg, var(--estado-critico), var(--estado-alerta) 60%, var(--estado-ok))',
+          }}
+        />
         Real
       </span>
       <span className="flex items-center gap-2 text-muted-foreground">

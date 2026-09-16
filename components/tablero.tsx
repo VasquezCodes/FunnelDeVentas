@@ -26,7 +26,7 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react/ssr'
 
-import type { Indicador, Meta, Periodo, Real, TipoPeriodo } from '@/lib/tipos'
+import type { Indicador, Meta, Periodo, Real, TasaDelPlan, TipoPeriodo } from '@/lib/tipos'
 import { compararTodos } from '@/lib/comparacion'
 import { compararPeriodos } from '@/lib/periodos'
 import { filasDeCanal, canalMasDeteriorado } from '@/lib/canales'
@@ -49,6 +49,8 @@ export interface DatosPrecargados {
   periodos: Periodo[]
   metasPorPeriodo: Record<string, Meta[]>
   realesPorPeriodo: Record<string, Real[]>
+  /** Las tasas del plan (hoja «Variables»). */
+  tasas?: TasaDelPlan[]
   /** De dónde salieron las cifras del plan. Del pie solo queda el aviso de filas perdidas. */
   procedencia?: {
     libro: string
@@ -62,6 +64,9 @@ export interface DatosPrecargados {
   hoy?: string
 }
 
+/** Sin tasas: una constante, para que el valor por defecto no cambie en cada render. */
+const SIN_TASAS: TasaDelPlan[] = []
+
 /** Indicadores que tiene sentido graficar en la serie temporal. */
 const GRAFICABLES = new Set(['embudo', 'dinero', 'captacion'])
 
@@ -70,6 +75,7 @@ export function Tablero({
   periodos,
   metasPorPeriodo,
   realesPorPeriodo,
+  tasas = SIN_TASAS,
   procedencia = null,
   errorReales = null,
   hoy,
@@ -299,6 +305,7 @@ export function Tablero({
           metasQ2={metasPorPeriodo[idQ2] ?? []}
           realesQ1={realesPorPeriodo[idQ1] ?? []}
           realesQ2={realesPorPeriodo[idQ2] ?? []}
+          tasas={tasas}
           // Guardar reemplaza las dos quincenas enteras: si no se pudo leer lo
           // guardado, guardar ahora borraría lo que no se ha cargado.
           bloqueo={
@@ -332,7 +339,7 @@ export function Tablero({
       titulo: 'Dónde se estrecha',
       glosa: 'Cada etapa contra su plan, mes a mes.',
       avisa: embudoAvisa,
-      contenido: <Embudo serie={serieDelTipo} periodoId={periodo.id} />,
+      contenido: <Embudo serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
     },
     {
       id: 'canales',
@@ -343,7 +350,7 @@ export function Tablero({
         ? `El coste por lead de ${canalCaro.nombre.toLowerCase()} se ha ido por encima del plan.`
         : 'Lo que cada canal aporta al embudo y lo que hay que pagar por ello.',
       avisa: canalCaro !== null,
-      contenido: <Canales serie={serieDelTipo} periodoId={periodo.id} />,
+      contenido: <Canales serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
     },
     {
       id: 'dinero',

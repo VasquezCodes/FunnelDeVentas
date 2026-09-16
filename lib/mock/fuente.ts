@@ -14,8 +14,27 @@
  * tests.
  */
 
-import type { FuenteDatos, Indicador, Meta, Periodo, Real } from '@/lib/tipos'
+import type { FuenteDatos, Indicador, Meta, Periodo, Real, TasaDelPlan } from '@/lib/tipos'
 import { INDICADORES, METAS, PERIODOS_MOCK, REALES } from '@/lib/mock/datos'
+import { construirTasas } from '@/lib/plan/tasas'
+
+/** Las hipótesis de la hoja «Variables» del libro de abril de 2026. */
+const TASAS_DE_EJEMPLO = construirTasas(
+  new Map([
+    ['CVR_Llamada', 0.6],
+    ['CVR_Cualificación', 0.3],
+    ['CVR_Propuestas', 0.5],
+    ['CVR_Cierre', 0.4],
+    ['CVR_LinkCTR', 0.01],
+    ['CVR_Publicidad', 0.1],
+    ['CVR_Prospección', 0.06],
+    ['CVR_Referidos', 0.2],
+    ['CVR_Afiliados', 0.2],
+    ['CVR_Contenido', 0.02],
+    ['CVR_Apertura', 0.5],
+    ['CVR_Newsletter', 0.02],
+  ]),
+).tasas
 
 /** Cede el turno una vez, sin temporizadores. Marca el punto asíncrono. */
 async function cederTurno(): Promise<void> {
@@ -45,5 +64,10 @@ export const fuenteMock: FuenteDatos = {
   async reales(periodoId: string): Promise<Real[]> {
     await cederTurno()
     return REALES.filter((real) => real.periodoId === periodoId)
+  },
+
+  async tasas(): Promise<TasaDelPlan[]> {
+    await cederTurno()
+    return TASAS_DE_EJEMPLO
   },
 }

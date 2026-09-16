@@ -47,8 +47,9 @@ import {
   type PointerEvent as EventoPunteroReact,
 } from 'react'
 import type { Icon } from '@phosphor-icons/react'
+import { ArrowsOutSimpleIcon } from '@phosphor-icons/react/ssr'
 import type { LucideIcon } from 'lucide-react'
-import { Area, AreaChart, Line, ReferenceLine, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, Line, ReferenceLine, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { CabeceraHoja, Hoja, IconoEnPastilla } from '@/components/graficos/hoja'
@@ -66,7 +67,6 @@ import {
   MESES_CORTOS,
   MESES_LARGOS,
   capitalizar,
-  compararPeriodos,
   etiquetaConCobertura,
 } from '@/lib/periodos'
 import type { Comparativa, Direccion, Estado, Periodo } from '@/lib/tipos'
@@ -106,28 +106,18 @@ export interface Ficha {
   relacion: 'de' | 'frente'
   /** Un punto por periodo de la ventana, en el mismo orden. */
   puntos: PuntoFicha[]
+  /** Las cifras del eje en la ficha grande: «1.2 k», «40 %». Por defecto, compactas. */
+  formatearEje?: (valor: number) => string
   /** Clases de colocación en la rejilla ancha. */
   colocacion?: string
 }
 
 const PUNTO_VACIO: PuntoFicha = { plan: null, real: null, cumplimiento: null, estado: 'sin-dato' }
 
-/** Meses de historia de cada ficha. */
-export const LARGO_VENTANA = 6
+export { LARGO_VENTANA, ventanaDe } from '@/components/graficos/ventana'
 
-/**
- * Los `largo` periodos que acaban en el elegido. Si el elegido es de los
- * primeros del plan, la ventana se completa con los siguientes: así todas
- * las fichas tienen la misma historia y el mes elegido no se queda en un
- * gráfico de un solo punto.
- */
-export function ventanaDe(serie: PuntoDeSerie[], periodoId: string, largo = LARGO_VENTANA) {
-  const ordenada = serie.slice().sort((a, b) => compararPeriodos(a.periodo, b.periodo))
-  let indice = ordenada.findIndex((p) => p.periodo.id === periodoId)
-  if (indice < 0) indice = ordenada.length - 1
-  const inicio = Math.max(0, Math.min(indice - (largo - 1), ordenada.length - largo))
-  return { ventana: ordenada.slice(inicio, inicio + largo), elegido: indice - inicio }
-}
+const FORMATO_EJE = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 })
+const ejeCompacto = (valor: number) => FORMATO_EJE.format(valor)
 
 /** División que no devuelve Infinity, NaN ni un dato ausente. */
 export function cociente(a: number | null | undefined, b: number | null | undefined) {
@@ -234,6 +224,9 @@ export function lecturaDe(
 
 /** Alto del trazado, sin la banda de los meses. */
 const ALTO_TRAZADO = 76
+/** En la ficha abierta en grande: alto para leer la forma y un eje con cifras. */
+const ALTO_TRAZADO_GRANDE = 260
+const ANCHO_EJE_Y = 44
 /** Banda de los meses. */
 const ALTO_EJE = 22
 /**
@@ -279,6 +272,8 @@ export interface RejillaFichasProps {
   colorLeyenda?: string
   /** Identidad de la carga: al cambiar de periodo la entrada se repite. */
   datos: unknown
+  /** Pulsar una ficha la abre en grande. Sin esto, las fichas no se pulsan. */
+  onAbrir?: (indiceFicha: number) => void
 }
 
 export function RejillaFichas({
@@ -289,6 +284,7 @@ export function RejillaFichas({
   nombreFila,
   colorLeyenda,
   datos,
+  onAbrir,
 }: RejillaFichasProps) {
   const refHoja = useRef<HTMLDivElement>(null)
 
@@ -334,6 +330,7 @@ export function RejillaFichas({
               ventana={ventana}
               elegido={elegido}
               clave={clave}
+              onAbrir={onAbrir ? () => onAbrir(i) : undefined}
             />
           ))}
         </div>
@@ -351,16 +348,28 @@ export function RejillaFichas({
 
 // ── La ficha ────────────────────────────────────────────────────────────
 
-interface CeldaFichaProps {
+export interface CeldaFichaProps {
   ficha: Ficha
   indiceFicha: number
   ventana: Periodo[]
   elegido: number
   /** Identidad de la vista: si cambia, la ficha vuelve al mes elegido. */
   clave: string
+  /** Abre la ficha en grande. Pulsar la ficha, o Intro con el foco en ella. */
+  onAbrir?: () => void
+  /** La ficha abierta en grande: trazado alto, eje con cifras y rejilla. */
+  grande?: boolean
 }
 
-function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaProps) {
+export function CeldaFicha({
+  ficha,
+  indiceFicha,
+  ventana,
+  elegido,
+  clave,
+  onAbrir,
+  grande = false,
+}: CeldaFichaProps) {
   const [refTrazado, ancho, escalaTexto] = useAnchoContenedor<HTMLDivElement>()
   // El velo del área vive en <defs> con un id: sin uno propio por ficha,
   // las seis compartirían —y pisarían— el mismo degradado.
@@ -403,6 +412,11 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
               ? ultimo
               : null
     if (evento.key === 'Escape') soltar()
+    if (onAbrir && (evento.key === 'Enter' || evento.key === ' ')) {
+      evento.preventDefault()
+      onAbrir()
+      return
+    }
     if (destino === null) return
     evento.preventDefault()
     senalar(destino)
@@ -444,8 +458,12 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
     [datos],
   )
 
+  // En grande, el eje de cifras ocupa su sitio a la izquierda del trazado.
+  const ejeY = grande ? ANCHO_EJE_Y : 0
+  const altoTrazado = grande ? ALTO_TRAZADO_GRANDE : ALTO_TRAZADO
+
   // Con sitio, todos los meses; si no, los extremos, el elegido y el mostrado.
-  const hueco = ancho === null ? Infinity : (ancho - 2 * MARGEN_X) / Math.max(1, n - 1)
+  const hueco = ancho === null ? Infinity : (ancho - 2 * MARGEN_X - ejeY) / Math.max(1, n - 1)
   const rotulados =
     hueco >= HUECO_MINIMO_MES ? null : new Set([0, n - 1, elegido, mostrado])
   const tamanoEje = TAMANO_EJE * escalaTexto
@@ -453,12 +471,12 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
   /** El puntero, traducido al mes más cercano: se apunta a una fecha, no a una línea de 2 px. */
   const senalarDesde = (evento: EventoPunteroReact<HTMLDivElement>) => {
     const caja = evento.currentTarget.getBoundingClientRect()
-    const util = caja.width - 2 * MARGEN_X
+    const util = caja.width - 2 * MARGEN_X - ejeY
     if (n <= 1 || util <= 0) {
       senalar(0)
       return
     }
-    const indice = Math.round((evento.clientX - caja.left - MARGEN_X) / (util / (n - 1)))
+    const indice = Math.round((evento.clientX - caja.left - MARGEN_X - ejeY) / (util / (n - 1)))
     senalar(Math.min(n - 1, Math.max(0, indice)))
   }
 
@@ -474,19 +492,37 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
       // anillo son suyos, igual que el ratón.
       role="group"
       tabIndex={0}
-      aria-label={`${ficha.titulo}. Las flechas izquierda y derecha recorren los meses.`}
+      aria-label={`${ficha.titulo}. Las flechas izquierda y derecha recorren los meses.${onAbrir ? ' Intro la abre en grande.' : ''}`}
       onKeyDown={alTeclear}
       onBlur={soltar}
       onPointerLeave={soltar}
+      onClick={onAbrir}
       className={cn(
-        'flex min-w-0 flex-col bg-card px-5 pt-5 pb-3 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring',
+        'group/ficha flex min-w-0 flex-col bg-card -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring',
+        grande ? 'px-6 pt-5 pb-4' : 'px-5 pt-5 pb-3',
+        onAbrir &&
+          'cursor-pointer transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--foreground)_2.5%,var(--card))]',
         ficha.colocacion,
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="flex min-w-0 items-center gap-2.5 text-[0.8125rem] leading-5 font-medium text-foreground">
-          {Icono && <IconoEnPastilla Icono={Icono} color={ficha.color} tamano="sm" />}
+        <h3
+          className={cn(
+            'flex min-w-0 items-center gap-2.5 font-medium text-foreground',
+            grande ? 'text-base leading-6' : 'text-[0.8125rem] leading-5',
+          )}
+        >
+          {Icono && <IconoEnPastilla Icono={Icono} color={ficha.color} tamano={grande ? 'md' : 'sm'} />}
           <span className="truncate">{ficha.titulo}</span>
+          {/* Que se puede abrir se dice al pasar: fija, la flecha sería
+              ruido repetido en seis fichas. */}
+          {onAbrir && (
+            <ArrowsOutSimpleIcon
+              weight="bold"
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover/ficha:opacity-100 group-focus-visible/ficha:opacity-100"
+            />
+          )}
         </h3>
         <Semaforo
           estado={punto.estado}          cumplimiento={punto.cumplimiento}
@@ -501,7 +537,8 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
           mismo, una cuenta a medias escribiría encima del mes señalado. */}
       <p
         className={cn(
-          'font-display mt-4 text-[2.5rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+          'font-display mt-4 leading-none font-normal tracking-[-0.02em] proportional-nums',
+          grande ? 'text-[3.25rem]' : 'text-[2.5rem]',
           lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
         )}
       >
@@ -530,7 +567,7 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
           // Altura explícita: el carrusel pliega los paneles ocultos y un
           // `h-full` mediría cero.
           className="aspect-auto w-full"
-          style={{ height: MARGEN_SUPERIOR + ALTO_TRAZADO + ALTO_EJE }}
+          style={{ height: MARGEN_SUPERIOR + altoTrazado + ALTO_EJE }}
         >
           <AreaChart
             data={datos}
@@ -538,6 +575,8 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
             // El teclado lo lleva la ficha, no el gráfico.
             accessibilityLayer={false}
           >
+            {/* En grande, la rejilla regla el papel para leer las cifras del eje. */}
+            {grande && <CartesianGrid vertical={false} stroke="var(--grid-line)" />}
             <defs>
               {/* El velo: una aguada del color de la serie que se desvanece
                   hacia abajo, no un bloque. */}
@@ -569,7 +608,20 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
                 )
               }
             />
-            <YAxis hide type="number" domain={[0, tope]} allowDataOverflow={false} />
+            {grande ? (
+              <YAxis
+                type="number"
+                domain={[0, 'auto']}
+                width={ANCHO_EJE_Y}
+                tickLine={false}
+                axisLine={false}
+                tickCount={5}
+                tickFormatter={ficha.formatearEje ?? ejeCompacto}
+                tick={{ fontSize: tamanoEje, fill: 'var(--muted-foreground)' }}
+              />
+            ) : (
+              <YAxis hide type="number" domain={[0, tope]} allowDataOverflow={false} />
+            )}
 
             {/* La guía del mes señalado, por debajo de las series. */}
             {activo !== null && datos[activo] && (
@@ -680,6 +732,22 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
                       data-punto-elegido={
                         activo === null && realMostrado === null ? '' : undefined
                       }
+                      cx={Number(cx)}
+                      cy={Number(cy)}
+                      r={RADIO_PUNTO_PLAN}
+                      fill="var(--card)"
+                      stroke="var(--color-plan)"
+                      strokeWidth={1.5}
+                    />
+                  )
+                }
+                // Lo que viene: un periodo después del elegido sin resultado
+                // solo tiene plan, y su punto hueco dice «previsto».
+                if (index > elegido && datos[index]?.real == null) {
+                  return (
+                    <circle
+                      key={`previsto-${index}`}
+                      data-punto-suelto
                       cx={Number(cx)}
                       cy={Number(cy)}
                       r={RADIO_PUNTO_PLAN}

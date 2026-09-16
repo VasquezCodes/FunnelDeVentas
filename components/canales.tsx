@@ -47,7 +47,7 @@
  * los leads se llenan abajo y las cifras cuentan.
  */
 
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Handshake,
   Megaphone,
@@ -79,12 +79,15 @@ import { filasDeCanal, type FilaCanal } from '@/lib/canales'
 import {
   ETIQUETAS_ESTADO,
   SIN_DATO,
+  formatearCoste,
   formatearCumplimiento,
   formatearValor,
 } from '@/lib/comparacion'
 import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
-import type { Canal } from '@/lib/tipos'
+import type { Canal, TasaDelPlan } from '@/lib/tipos'
+import { CANALES_ACTIVOS, NOMBRE_CANAL } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
+import { DetalleCanal } from '@/components/canal-individual'
 
 // ── Canales e iconos ────────────────────────────────────────────────────
 
@@ -142,18 +145,7 @@ const APAGADO_CELDA = 0.45
 // ── Formatos ────────────────────────────────────────────────────────────
 
 /** Dinero con céntimos: un coste por lead de $20.41 no es $20. */
-const FORMATO_COSTE = new Intl.NumberFormat('es-MX', {
-  style: 'currency',
-  currency: 'USD',
-  currencyDisplay: 'narrowSymbol',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-function coste(valor: number): string {
-  if (!Number.isFinite(valor)) return SIN_DATO
-  return FORMATO_COSTE.format(valor).replace(/-/g, '−')
-}
+const coste = (valor: number) => formatearCoste(valor)
 
 const dinero = (n: number) => formatearValor(n, 'moneda')
 const cantidad = (n: number) => formatearValor(n, 'cantidad')
@@ -232,26 +224,136 @@ export interface CanalesProps {
   serie: PuntoDeSerie[]
   /** El periodo elegido en el tablero. */
   periodoId: string
+  /** Las tasas del plan, para la cadena de cada canal. */
+  tasas: TasaDelPlan[]
 }
 
-export function Canales({ serie, periodoId }: CanalesProps) {
+/** El periodo elegido o, si no está, el último de la serie. */
+function periodoActual(serie: PuntoDeSerie[], periodoId: string): PuntoDeSerie | null {
+  return (
+    serie.find((p) => p.periodo.id === periodoId) ??
+    serie
+      .slice()
+      .sort((a, b) => compararPeriodos(a.periodo, b.periodo))
+      .at(-1) ??
+    null
+  )
+}
+
+/** Qué se mira: todos los canales juntos, o uno. */
+type VistaCanales = 'general' | Canal
+
+/**
+ * Canales: General compara el gasto y los leads de todos los canales; cada
+ * canal, por separado, enseña su gasto, sus leads y su cadena de conversión.
+ * Un solo conmutador, encima de la hoja, para cambiar de una a otra.
+ */
+export function Canales({ serie, periodoId, tasas }: CanalesProps) {
+  const [vista, setVista] = useState<VistaCanales>('general')
+  const actual = useMemo(() => periodoActual(serie, periodoId), [serie, periodoId])
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ConmutadorCanales vista={vista} onCambiar={setVista} />
+      {vista === 'general' || !actual ? (
+        <CanalesGeneral serie={serie} periodoId={periodoId} />
+      ) : (
+        // El mismo diagrama de General, solo con este canal, y debajo lo
+        // suyo: sus precios y su cadena. La `key` repite la entrada al
+        // cambiar de canal.
+        <CanalesGeneral key={vista} serie={serie} periodoId={periodoId} soloCanal={vista}>
+          <DetalleCanal
+            canal={vista}
+            nombre={NOMBRE_CANAL[vista]}
+            // El mismo tono que el canal lleva en la vista General.
+            color={`var(--canal-${Math.min(CANALES_ACTIVOS.indexOf(vista) + 1, 3)})`}
+            actual={actual}
+            tasas={tasas}
+          />
+        </CanalesGeneral>
+      )}
+    </div>
+  )
+}
+
+/**
+ * El conmutador de Canales: el mismo dibujo que Mes/Quincena, con el icono
+ * de cada canal para reconocerlo igual que en el diagrama.
+ */
+function ConmutadorCanales({
+  vista,
+  onCambiar,
+}: {
+  vista: VistaCanales
+  onCambiar: (vista: VistaCanales) => void
+}) {
+  const opciones: Array<{ id: VistaCanales; etiqueta: string; Icono?: LucideIcon }> = [
+    { id: 'general', etiqueta: 'General' },
+    ...CANALES_ACTIVOS.map((canal) => ({
+      id: canal,
+      etiqueta: NOMBRE_CANAL[canal],
+      Icono: ICONO_CANAL[canal],
+    })),
+  ]
+  return (
+    <div
+      role="group"
+      aria-label="Qué canales ver"
+      className="flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-full p-1"
+      style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
+    >
+      {opciones.map(({ id, etiqueta, Icono }) => {
+        const activo = id === vista
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={activo}
+            onClick={() => onCambiar(id)}
+            className={cn(
+              'flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-medium',
+              'transition-[background-color,color,box-shadow] duration-200',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+              activo
+                ? 'bg-background text-foreground shadow-(--sombra-tray)'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            style={{ transitionTimingFunction: 'var(--ease-fluid)' }}
+          >
+            {Icono && <Icono aria-hidden="true" size={15} strokeWidth={1.75} />}
+            {etiqueta}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * La hoja del diagrama de gasto a leads. Con `soloCanal`, el mismo diagrama
+ * con un único canal: su gasto contra su plan arriba, sus leads contra su
+ * plan abajo y la cinta entre los dos, que se ensancha si el canal trae más
+ * leads de los que paga. En vez de las celdas de precio de cada canal lleva
+ * debajo lo que se le pase (el detalle del canal).
+ */
+function CanalesGeneral({
+  serie,
+  periodoId,
+  soloCanal,
+  children,
+}: Omit<CanalesProps, 'tasas'> & { soloCanal?: Canal; children?: ReactNode }) {
   const refHoja = useRef<HTMLDivElement>(null)
   const [refDiagrama, ancho, escalaTexto] = useAnchoContenedor<HTMLDivElement>()
   // Los degradados y recortes viven en <defs> con id: uno propio por hoja.
   const idBase = `canales-${useId().replace(/:/g, '')}`
   const [resaltado, setResaltado] = useState<Canal | null>(null)
 
-  const actual = useMemo(
-    () =>
-      serie.find((p) => p.periodo.id === periodoId) ??
-      serie
-        .slice()
-        .sort((a, b) => compararPeriodos(a.periodo, b.periodo))
-        .at(-1) ??
-      null,
-    [serie, periodoId],
-  )
-  const filas = useMemo(() => (actual ? filasDeCanal(actual.comparativas) : []), [actual])
+  const actual = useMemo(() => periodoActual(serie, periodoId), [serie, periodoId])
+  // Filtrar después de construir: cada canal conserva su tono de la rampa.
+  const filas = useMemo(() => {
+    const todas = actual ? filasDeCanal(actual.comparativas) : []
+    return soloCanal ? todas.filter((f) => f.canal === soloCanal) : todas
+  }, [actual, soloCanal])
 
   const gastoReal = sumar(filas.map((f) => f.gastoReal))
   const gastoPlan = sumar(filas.map((f) => f.gastoPlan))
@@ -316,8 +418,12 @@ export function Canales({ serie, periodoId }: CanalesProps) {
     return (
       <HojaVacia
         Icono={MagnetIcon}
-        titulo="Todavía no hay canales que dibujar"
-        motivo="Ningún canal tiene leads ni gasto capturados en este periodo."
+        titulo={soloCanal ? 'Todavía no hay nada que dibujar' : 'Todavía no hay canales que dibujar'}
+        motivo={
+          soloCanal
+            ? `${NOMBRE_CANAL[soloCanal]} no tiene leads ni gasto, ni en el plan ni capturados, en este periodo.`
+            : 'Ningún canal tiene leads ni gasto capturados en este periodo.'
+        }
       />
     )
   }
@@ -332,7 +438,25 @@ export function Canales({ serie, periodoId }: CanalesProps) {
   return (
     <Hoja ref={refHoja}>
       <CabeceraHoja
-        leyenda={<LeyendaCanales colores={filas.map((f) => f.color)} />}
+        leyenda={
+          soloCanal ? (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p className="flex items-center gap-2.5 text-[0.8125rem] font-medium text-foreground">
+                {ICONO_CANAL[soloCanal] && (
+                  <IconoEnPastilla
+                    Icono={ICONO_CANAL[soloCanal]}
+                    color={filas[0]?.color ?? 'var(--canal-1)'}
+                    tamano="sm"
+                  />
+                )}
+                {NOMBRE_CANAL[soloCanal]}
+              </p>
+              <LeyendaCanales colores={filas.map((f) => f.color)} />
+            </div>
+          ) : (
+            <LeyendaCanales colores={filas.map((f) => f.color)} />
+          )
+        }
         mes={actual ? etiquetaConCobertura(actual.periodo) : undefined}
       />
 
@@ -342,7 +466,12 @@ export function Canales({ serie, periodoId }: CanalesProps) {
       <div data-entrada-velo className="@container">
         <div className="px-5 pt-3 pb-4">
           {!enColumnas && (
-            <CabeceraBarra titulo="Gasto por canal" dato="gasto" punto={puntoGasto} formatear={dinero} />
+            <CabeceraBarra
+              titulo={soloCanal ? 'Gasto' : 'Gasto por canal'}
+              dato="gasto"
+              punto={puntoGasto}
+              formatear={dinero}
+            />
           )}
 
           <div ref={refDiagrama} className="flex min-w-0" style={{ gap: HUECO_COLUMNA }}>
@@ -508,7 +637,7 @@ export function Canales({ serie, periodoId }: CanalesProps) {
 
           {!enColumnas && (
             <CabeceraBarra
-              titulo="Leads por canal"
+              titulo={soloCanal ? 'Leads' : 'Leads por canal'}
               dato="leads"
               punto={puntoLeads}
               formatear={cantidad}
@@ -516,24 +645,28 @@ export function Canales({ serie, periodoId }: CanalesProps) {
           )}
         </div>
 
-        {/* El precio de cada canal: una celda por canal, con filetes. */}
-        <div
-          className="grid grid-cols-1 gap-px border-t @[40rem]:grid-cols-3"
-          style={{ backgroundColor: 'var(--regla-fina)', borderColor: 'var(--regla-fina)' }}
-        >
-          {filas.map((f, i) => (
-            <CeldaCanal
-              key={f.canal}
-              fila={f}
-              indice={i}
-              punto={puntosCoste[i]}
-              cuota={cuotas[i]}
-              Icono={ICONO_CANAL[f.canal]}
-              opacidad={apagar(f.canal, APAGADO_CELDA)}
-              onResaltar={setResaltado}
-            />
-          ))}
-        </div>
+        {soloCanal ? (
+          children
+        ) : (
+          // El precio de cada canal: una celda por canal, con filetes.
+          <div
+            className="grid grid-cols-1 gap-px border-t @[40rem]:grid-cols-3"
+            style={{ backgroundColor: 'var(--regla-fina)', borderColor: 'var(--regla-fina)' }}
+          >
+            {filas.map((f, i) => (
+              <CeldaCanal
+                key={f.canal}
+                fila={f}
+                indice={i}
+                punto={puntosCoste[i]}
+                cuota={cuotas[i]}
+                Icono={ICONO_CANAL[f.canal]}
+                opacidad={apagar(f.canal, APAGADO_CELDA)}
+                onResaltar={setResaltado}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <TablaLectores filas={filas} cuotas={cuotas} mes={actual?.periodo.etiqueta} />
@@ -670,7 +803,9 @@ function TramoBarra({
   const ancho = tramo.x1 - tramo.x0
   if (ancho <= 0) return null
   const Icono = ICONO_CANAL[fila.canal]
-  const sobre = `var(--canal-${Math.min(indice + 1, 3)}-sobre)`
+  // El color que contrasta con el relleno sale del tono del canal y no de su
+  // posición: con un solo canal en la barra, la posición siempre es la 0.
+  const sobre = fila.color.replace(/\)$/, '-sobre)')
   const anchoImporte = anchoTexto(importe, tamano)
   const anchoNombre = anchoTexto(fila.nombre, tamano)
   const inicioTexto = SANGRIA + LADO_ICONO + AIRE_ICONO

@@ -134,6 +134,9 @@
   --estado-critico: #a0073a;
   --estado-neutro: #9a938d;
   --estado-ok-suave: #e6f2ec;
+  /* El plan cumplido entero: «más verde» que «en plan». Lo usa el anillo
+     del Dinero en su tramo final (lib/color-cumplimiento.ts). */
+  --estado-ok-fuerte: #0b6343;
   --estado-alerta-suave: #fbf1de;
   --estado-critico-suave: #f9e7ec;
 
@@ -274,6 +277,8 @@
   --estado-critico: #ef7089;
   --estado-neutro: #8c837e;
   --estado-ok-suave: #16302a;
+  /* En oscuro, «más verde» es más luminoso, no más oscuro. */
+  --estado-ok-fuerte: #7ddcae;
   --estado-alerta-suave: #33280f;
   --estado-critico-suave: #3a1b23;
 

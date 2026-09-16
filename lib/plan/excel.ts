@@ -23,11 +23,15 @@
 
 import * as XLSX from 'xlsx'
 
-import type { Indicador, Meta, Periodo } from '@/lib/tipos'
+import type { Indicador, Meta, Periodo, TasaDelPlan } from '@/lib/tipos'
 import { construirPeriodoMes } from '@/lib/periodos'
 import { CATALOGO, type EntradaCatalogo } from '@/lib/plan/catalogo'
+import { construirTasas } from '@/lib/plan/tasas'
+import { valoresDeNombres } from '@/lib/plan/variables'
 
 const HOJA = 'Plan de Ventas'
+/** Las hipótesis del plan (tasas de conversión), leídas por nombre definido. */
+const HOJA_VARIABLES = 'Variables'
 
 /** Primera fila con datos: la 1 es la cabecera y la 2 dice «UDS». */
 const PRIMERA_FILA_DATOS = 2
@@ -44,6 +48,8 @@ export interface PlanLeido {
   metas: Meta[]
   /** Solo los indicadores que de verdad aparecieron en la hoja. */
   indicadores: Indicador[]
+  /** Las tasas del plan, de la hoja «Variables». */
+  tasas: TasaDelPlan[]
   /**
    * Filas del catálogo que no se encontraron. No es un error fatal —el
    * tablero sigue funcionando— pero tiene que verse: significa que alguien
@@ -118,9 +124,9 @@ function construirIndices(): {
 export function leerPlan(contenido: ArrayBuffer): PlanLeido {
   const libro = XLSX.read(contenido, {
     type: 'array',
-    // Solo se necesita esta hoja: leer las 17 (una con 32 000 filas de
-    // facturas) multiplicaría el tiempo y la memoria sin motivo.
-    sheets: [HOJA],
+    // Solo se necesitan estas dos hojas: leer las 17 (una con 32 000 filas
+    // de facturas) multiplicaría el tiempo y la memoria sin motivo.
+    sheets: [HOJA, HOJA_VARIABLES],
     // Fechas como serial: ver la nota de cabecera.
     cellDates: false,
     // Las fórmulas no interesan, sí sus resultados, que es lo que queda en
@@ -204,5 +210,10 @@ export function leerPlan(contenido: ArrayBuffer): PlanLeido {
   // tablero, y no el orden en que aparecen las filas en la hoja.
   const indicadores = CATALOGO.map((e) => e.indicador).filter((i) => encontrados.has(i.id))
 
-  return { periodos, metas, indicadores, incidencias }
+  // ── Tasas ─────────────────────────────────────────────────────────────
+  // Una tasa perdida no tumba nada: su fila enseña la real sin plan al lado.
+  const { tasas, faltan } = construirTasas(valoresDeNombres(libro))
+  for (const nombre of faltan) incidencias.push(`${HOJA_VARIABLES} · ${nombre}`)
+
+  return { periodos, metas, indicadores, tasas, incidencias }
 }

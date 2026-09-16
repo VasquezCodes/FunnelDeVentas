@@ -13,7 +13,7 @@ import 'server-only'
 
 import { cache } from 'react'
 
-import type { FuenteDatos, Indicador, Meta, Periodo, Real } from '@/lib/tipos'
+import type { FuenteDatos, Indicador, Meta, Periodo, Real, TasaDelPlan } from '@/lib/tipos'
 import { compararPeriodos } from '@/lib/periodos'
 import { cachearLecturaDelPlan, descargarLibro } from '@/lib/plan/graph'
 import { leerPlan, type PlanLeido } from '@/lib/plan/excel'
@@ -65,7 +65,9 @@ const leerDelOrigen = async (): Promise<PlanEnCache> => {
  * (metas y reales de cada periodo). `cache` de React lo reduce a una lectura
  * por petición: sin esto, pintar el tablero tras guardar tardaba segundos.
  */
-const obtenerPlan = cache(cachearLecturaDelPlan('plan-de-ventas', leerDelOrigen))
+// La clave cambia cuando cambia la forma de lo guardado: con la de antes, la
+// caché serviría media hora un plan sin tasas.
+const obtenerPlan = cache(cachearLecturaDelPlan('plan-de-ventas-con-tasas', leerDelOrigen))
 
 /**
  * Las quincenas guardadas, con sus totales ya calculados, una vez por
@@ -136,5 +138,9 @@ export const fuenteExcel: FuenteDatos = {
     const [plan, quincenas] = await Promise.all([obtenerPlan(), quincenasCompletas()])
     const periodo = plan.periodos.find((p) => p.id === periodoId)
     return periodo ? realesDelPeriodo(periodo, quincenas) : []
+  },
+
+  async tasas(): Promise<TasaDelPlan[]> {
+    return (await obtenerPlan()).tasas
   },
 }

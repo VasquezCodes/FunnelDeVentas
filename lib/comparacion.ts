@@ -95,6 +95,21 @@ const FORMATO_ENTERO = new Intl.NumberFormat('es-MX', {
   maximumFractionDigits: 0,
 })
 
+/** Dinero con céntimos, para costes unitarios. */
+const FORMATO_COSTE = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'USD',
+  currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/** Un coste unitario, con céntimos: un coste por lead de $20.41 no es $20. */
+export function formatearCoste(valor: number | null): string {
+  if (valor === null || !Number.isFinite(valor)) return SIN_DATO
+  return conMenosTipografico(FORMATO_COSTE.format(valor))
+}
+
 /** Variantes con signo explícito. El cero se queda sin signo: «+0» no informa. */
 const FORMATO_CANTIDAD_CON_SIGNO = new Intl.NumberFormat('es-MX', {
   maximumFractionDigits: 0,

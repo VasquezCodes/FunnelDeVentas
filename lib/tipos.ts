@@ -167,6 +167,29 @@ export interface Conversion {
   tasaReal: number | null
 }
 
+/**
+ * Una tasa del plan: qué fracción de `desde` se espera que llegue a `hacia`.
+ *
+ * Sale de la hoja «Variables» del libro, que es donde el plan fija sus
+ * hipótesis (la conversión a llamada, el CTR, la CVR de cada canal). Es una
+ * constante del plan, no una cifra por mes. La tasa real de un periodo es
+ * `real(hacia) / real(desde)` de ese periodo (`lib/tasas.ts`).
+ */
+export interface TasaDelPlan {
+  /** 'eleads>llamadas', 'publicidad-clicks>eleads.publicidad'… */
+  id: string
+  /** Como la llama el Excel: «Tasa de cierre», «Link CTR», «CVR Publicidad». */
+  nombre: string
+  /** Id del indicador de origen. */
+  desde: string
+  /** Id del indicador de destino. */
+  hacia: string
+  /** Fracción (0.6 = 60 %). null si el libro no trae el dato. */
+  plan: number | null
+  /** El canal, si la tasa es de un canal. */
+  canal?: Canal
+}
+
 // ── Fuente de datos ─────────────────────────────────────────────────────
 
 /**
@@ -184,6 +207,8 @@ export interface FuenteDatos {
   /** Metas del plan. En un mes en curso, las de lo que ya pasó (ver lib/reales/mes.ts). */
   metas(periodoId: string): Promise<Meta[]>
   reales(periodoId: string): Promise<Real[]>
+  /** Las tasas del plan: las hipótesis de conversión, iguales para todos los periodos. */
+  tasas(): Promise<TasaDelPlan[]>
 }
 
 export const UMBRALES_POR_DEFECTO: Umbrales = { ok: 0.95, alerta: 0.8 }

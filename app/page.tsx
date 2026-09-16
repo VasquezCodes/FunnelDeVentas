@@ -39,11 +39,12 @@ type Carga =
 async function leerTodo() {
   const fuente = fuenteExcel
 
-  const [indicadores, periodos, procedencia, reales] = await Promise.all([
+  const [indicadores, periodos, procedencia, reales, tasas] = await Promise.all([
     fuente.indicadores(),
     fuente.periodos(),
     procedenciaDelPlan(),
     estadoDeQuincenas(),
+    fuente.tasas(),
   ])
 
   // El plan entero son unos pocos miles de números: se precarga todo y así
@@ -69,6 +70,7 @@ async function leerTodo() {
     periodos,
     metasPorPeriodo,
     realesPorPeriodo,
+    tasas,
     procedencia,
     errorReales: reales.error,
   }
@@ -96,7 +98,7 @@ export default async function Pagina() {
 
   if (!carga.ok) return <NoSePudoLeerElPlan mensaje={carga.mensaje} />
 
-  const { indicadores, periodos, metasPorPeriodo, realesPorPeriodo, procedencia, errorReales } =
+  const { indicadores, periodos, metasPorPeriodo, realesPorPeriodo, tasas, procedencia, errorReales } =
     carga.datos
 
   return (
@@ -105,6 +107,7 @@ export default async function Pagina() {
       periodos={periodos}
       metasPorPeriodo={metasPorPeriodo}
       realesPorPeriodo={realesPorPeriodo}
+      tasas={tasas}
       errorReales={errorReales}
       hoy={hoy}
       procedencia={{

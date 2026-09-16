@@ -81,10 +81,12 @@ export const BLOQUES: readonly BloqueCaptura[] = [
     'ingreso-total',
   ),
   bloque('captacion', 'Gasto de captación', sumandosDe('captacion-total'), 'captacion-total'),
-  // Hoy ningún gráfico los usa: se pueden capturar sin que estorben.
+  // Hoy ningún gráfico los usa: se pueden capturar sin que estorben. El
+  // nombre es el que usa el equipo: lo que hay que hacer antes de que un
+  // canal dé leads (impresiones, contactos, envíos).
   {
     id: 'insumos',
-    titulo: 'Insumos por canal',
+    titulo: 'Variables previas por canal',
     grupos: gruposDeInsumos(),
     total: null,
     plegado: true,

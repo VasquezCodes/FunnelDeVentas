@@ -30,14 +30,29 @@
  *  5. GUARDAR PIDE LA CONTRASEÑA, SIEMPRE. No hay cuentas: la contraseña de
  *     captura es lo que impide que cualquiera con el enlace cambie las
  *     cifras. Se pide en cada guardado y no se recuerda.
+ *
+ *  6. LAS TASAS, AL LADO DEL PLAN. Entre las etapas, y bajo las variables
+ *     previas de cada canal, la tasa real de cada quincena y del mes frente a
+ *     la del plan (hoja «Variables»). Se recalculan al teclear, así que
+ *     también delatan una cifra mal escrita: nadie convierte el 300 %.
  */
 
-import { startTransition, useEffect, useId, useMemo, useState, useTransition } from 'react'
+import {
+  Fragment,
+  startTransition,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from 'react'
 import { ArrowsClockwiseIcon, CaretDownIcon, CheckIcon, WarningIcon } from '@phosphor-icons/react/ssr'
 import {
   BadgeCheck,
   Coins,
   Layers,
+  Percent,
   PhoneCall,
   ScanSearch,
   Users,
@@ -46,8 +61,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import type { Indicador, Meta, Periodo, Real, Unidad } from '@/lib/tipos'
-import { formatearValor } from '@/lib/comparacion'
+import type { Indicador, Meta, Periodo, Real, TasaDelPlan, Unidad } from '@/lib/tipos'
+import { NOMBRE_CANAL } from '@/lib/tipos'
+import { formatearTasaConversion, formatearValor } from '@/lib/comparacion'
+import { tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
 import { BLOQUES, type BloqueCaptura } from '@/lib/captura/bloques'
 import { completarTotales } from '@/lib/captura/totales'
@@ -72,7 +89,6 @@ const ANCHO_TABLA = 'min-w-[46rem]'
 const HAIRLINE = 'border-[color-mix(in_oklab,var(--foreground)_7%,transparent)]'
 
 type Quincena = 'q1' | 'q2'
-const QUINCENAS: Quincena[] = ['q1', 'q2']
 
 /**
  * Icono y color de cada bloque: los mismos que el tablero, para que un
@@ -93,6 +109,25 @@ const APARIENCIA_NEUTRA = { Icono: Layers, color: 'var(--muted-foreground)' }
 const cifra = (valor: number | null, unidad: Unidad) =>
   valor === null ? '' : formatearValor(valor, unidad)
 
+/** Una tasa, o nada si no la hay. */
+const porcentaje = (tasa: number | null) => (tasa === null ? '' : formatearTasaConversion(tasa))
+
+/**
+ * Las tasas que van entre un bloque de etapa y el siguiente. `porCanal`: se
+ * despliega canal a canal (solo donde el plan reparte las dos etapas).
+ */
+const TASAS_TRAS_BLOQUE: Record<string, Array<{ desde: string; hacia: string; porCanal: boolean }>> = {
+  eleads: [{ desde: 'eleads', hacia: 'llamadas', porCanal: true }],
+  llamadas: [{ desde: 'llamadas', hacia: 'discoveries', porCanal: false }],
+  'discoveries-propuestas': [
+    { desde: 'discoveries', hacia: 'propuestas', porCanal: false },
+    { desde: 'propuestas', hacia: 'ventas', porCanal: false },
+  ],
+}
+
+/** La banda de una tasa: un gris muy bajo que la separa de las filas que se teclean. */
+const BANDA_TASA = 'bg-[color-mix(in_oklab,var(--foreground)_3.5%,transparent)]'
+
 // ── Props ───────────────────────────────────────────────────────────────
 
 export interface CapturaManualProps {
@@ -105,6 +140,8 @@ export interface CapturaManualProps {
   metasQ2: Meta[]
   realesQ1: Real[]
   realesQ2: Real[]
+  /** Las tasas del plan (hoja «Variables»). */
+  tasas: TasaDelPlan[]
   /** Por qué no se puede guardar ahora, o null si se puede. */
   bloqueo: string | null
   onGuardar: (
@@ -126,6 +163,7 @@ export function CapturaManual({
   metasQ2,
   realesQ1,
   realesQ2,
+  tasas,
   bloqueo,
   onGuardar,
   onCambiosPendientes,
@@ -302,7 +340,7 @@ export function CapturaManual({
     return (
       <span className="flex min-w-0 items-center gap-2.5">
         <IconoEnPastilla Icono={Icono} color={color} tamano="sm" />
-        <h3 id={idTitulo} className="truncate text-[0.9375rem] font-semibold text-foreground">
+        <h3 id={idTitulo} className="text-[0.9375rem] leading-snug font-semibold text-balance text-foreground">
           {bloque.titulo}
         </h3>
         {detalle && (
@@ -372,6 +410,12 @@ export function CapturaManual({
     return bloque.grupos.map((grupo, i) => {
       const filas = grupo.filas.map((id) => porId.get(id)).filter((x): x is Indicador => !!x)
       if (filas.length === 0) return null
+      // Las variables previas de un canal llevan debajo sus tasas: de la
+      // materia prima a los leads, con el nombre que les da el Excel.
+      const canal = filas[0].grupo === 'insumo' ? filas[0].canal : undefined
+      const tasasDelGrupo = canal
+        ? tasas.filter((t) => t.canal === canal && porId.get(t.desde)?.grupo === 'insumo')
+        : []
       return (
         <div key={grupo.titulo ?? i}>
           {grupo.titulo && (
@@ -380,7 +424,131 @@ export function CapturaManual({
             </p>
           )}
           {filas.map((indicador) => fila(bloque, indicador))}
+          {tasasDelGrupo.map((tasa) => (
+            <div
+              key={tasa.id}
+              data-tasa={tasa.id}
+              className={cn(claseRejilla, '-mx-3 mb-1 rounded-lg px-3 py-1.5', BANDA_TASA)}
+            >
+              {celdasTasa(tasa, <NombreTasa texto={tasa.nombre} />)}
+            </div>
+          ))}
         </div>
+      )
+    })
+  }
+
+  /** Lo real de un indicador en el mes, con la regla de siempre. */
+  function realDelMes(id: string) {
+    const q1 = conTotales.q1[id] ?? null
+    const q2 = conTotales.q2[id] ?? null
+    return resumirMes(q1, q2, null, null, null).real
+  }
+
+  /**
+   * Las celdas de una fila de tasa, en las columnas de la tabla: la tasa real
+   * de cada quincena visible, la del mes en «Total mes» y la del plan en
+   * «Plan mes».
+   */
+  function celdasTasa(tasa: TasaDelPlan, nombre: ReactNode) {
+    const real = (q: Quincena) =>
+      tasaReal(conTotales[q][tasa.desde] ?? null, conTotales[q][tasa.hacia] ?? null)
+    return (
+      <>
+        {nombre}
+        {quincenasAMostrar.map((q) => (
+          <span key={q} className="pr-3 text-right text-sm text-muted-foreground tabular-nums">
+            {porcentaje(real(q))}
+          </span>
+        ))}
+        <span className="text-right text-sm font-medium text-foreground tabular-nums">
+          {porcentaje(tasaReal(realDelMes(tasa.desde), realDelMes(tasa.hacia)))}
+        </span>
+        <span className="text-right text-sm text-muted-foreground tabular-nums">
+          {porcentaje(tasa.plan)}
+        </span>
+      </>
+    )
+  }
+
+  /** ¿Tiene el canal algo que convertir este mes? Plan o resultado en su etapa de origen. */
+  function canalConCifras(desdeId: string) {
+    const conPlan = (metaDe.q1.get(desdeId) ?? 0) > 0 || (metaDe.q2.get(desdeId) ?? 0) > 0
+    return conPlan || conTotales.q1[desdeId] !== undefined || conTotales.q2[desdeId] !== undefined
+  }
+
+  /**
+   * Las tasas que van entre un bloque de etapa y el siguiente. La que se
+   * reparte por canal es un desplegable: cerrado, la tasa total; abierto,
+   * una fila por canal con cifras.
+   */
+  function tasasTras(bloqueId: string) {
+    const pasos = TASAS_TRAS_BLOQUE[bloqueId]
+    if (!pasos) return null
+    return pasos.map(({ desde, hacia, porCanal }) => {
+      const total = tasaEntre(tasas, desde, hacia)
+      if (!total) return null
+      const canales = porCanal
+        ? tasas.filter(
+            (t) =>
+              t.canal !== undefined &&
+              t.desde === `${desde}.${t.canal}` &&
+              t.hacia === `${hacia}.${t.canal}` &&
+              canalConCifras(t.desde),
+          )
+        : []
+
+      if (canales.length === 0) {
+        return (
+          <div
+            key={total.id}
+            data-tasa={total.id}
+            className={cn(claseRejilla, '-mx-3 mt-3 rounded-lg px-3 py-2', BANDA_TASA)}
+          >
+            {celdasTasa(total, <NombreTasa texto={total.nombre} fuerte />)}
+          </div>
+        )
+      }
+
+      return (
+        <details key={total.id} data-tasa={total.id} className={cn('group/tasa -mx-3 mt-3 rounded-lg', BANDA_TASA)}>
+          <summary
+            className={cn(
+              claseRejilla,
+              'cursor-pointer list-none rounded-lg px-3 py-2 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden',
+            )}
+          >
+            {celdasTasa(
+              total,
+              <NombreTasa texto={total.nombre} fuerte>
+                <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+                  por canal
+                  <CaretDownIcon
+                    weight="bold"
+                    aria-hidden="true"
+                    className="size-3 transition-transform duration-200 group-open/tasa:rotate-180"
+                  />
+                </span>
+              </NombreTasa>,
+            )}
+          </summary>
+          <div className="px-3 pb-1.5">
+            {canales.map((tasa) => (
+              <div
+                key={tasa.id}
+                data-tasa={tasa.id}
+                className={cn(claseRejilla, 'border-t py-1.5', HAIRLINE)}
+              >
+                {celdasTasa(
+                  tasa,
+                  <span className="truncate pl-6 text-sm text-foreground">
+                    {tasa.canal ? NOMBRE_CANAL[tasa.canal] : tasa.nombre}
+                  </span>,
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
       )
     })
   }
@@ -459,14 +627,17 @@ export function CapturaManual({
               const hayFilas = bloque.grupos.some((g) => g.filas.some((id) => porId.has(id)))
               if (!hayFilas) return null
               return (
-                <div key={bloque.id} role="group" aria-labelledby={idTitulo} className="pt-8">
-                  <div className={cn(claseRejilla, 'pb-2')}>
-                    {titulo(bloque, idTitulo)}
-                    {nombresDeColumna()}
+                <Fragment key={bloque.id}>
+                  <div role="group" aria-labelledby={idTitulo} className="pt-8">
+                    <div className={cn(claseRejilla, 'pb-2')}>
+                      {titulo(bloque, idTitulo)}
+                      {nombresDeColumna()}
+                    </div>
+                    {filasDe(bloque)}
+                    {bloque.total && filaTotal(bloque.total)}
                   </div>
-                  {filasDe(bloque)}
-                  {bloque.total && filaTotal(bloque.total)}
-                </div>
+                  {tasasTras(bloque.id)}
+                </Fragment>
               )
             })}
           </div>
@@ -528,6 +699,29 @@ export function CapturaManual({
         onCancelar={() => setPidiendoClave(false)}
       />
     </section>
+  )
+}
+
+/** El nombre de una fila de tasa: el signo de porcentaje y cómo la llama el Excel. */
+function NombreTasa({
+  texto,
+  fuerte = false,
+  children,
+}: {
+  texto: string
+  fuerte?: boolean
+  children?: ReactNode
+}) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <Percent aria-hidden="true" strokeWidth={2} className="size-3.5 shrink-0 text-muted-foreground" />
+      {/* Parte en dos líneas antes que cortarse: en móvil la columna del
+          nombre es estrecha y «Tasa…» no dice nada. */}
+      <span className={cn('min-w-0 text-sm leading-snug text-foreground', fuerte && 'font-medium')}>
+        {texto}
+      </span>
+      {children}
+    </span>
   )
 }
 
