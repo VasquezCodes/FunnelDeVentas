@@ -1,12 +1,18 @@
 /**
  * Del rojo al verde: el color de un cumplimiento.
  *
- * Lo pidió el usuario para el Dinero: que arranque en rojo, pase por
- * amarillo y llegue a verde, más verde cuanto más cerca del plan. Las
- * franjas son las del semáforo (`UMBRALES_POR_DEFECTO`), así que el color y
- * la palabra nunca se contradicen: rojo con «Fuera de plan», ámbar con «Al
- * límite», verde con «En plan». Llegar al plan entero añade un verde más
- * intenso.
+ * Lo pidió el usuario para el Dinero: que arranque en rojo, se vaya
+ * convirtiendo en amarillo y termine en verde. Hay dos lecturas:
+ *
+ *  - Las franjas (`franjaDeCumplimiento`) son las del semáforo
+ *    (`UMBRALES_POR_DEFECTO`): rojo con «Fuera de plan», ámbar con «Al
+ *    límite», verde con «En plan».
+ *  - La escala continua (`colorEnPosicion`, `degradadoDeCumplimiento`) es el
+ *    avance hacia el plan, y cambia de color desde el primer momento. Antes
+ *    seguía las franjas y un 68 % salía rojo de punta a punta; el usuario lo
+ *    corrigió: «68 % no está tan mal y lo marca en super rojo». Ahora el
+ *    amarillo llega hacia el 60 %, el verde hacia el 90 % y el plan cumplido
+ *    es el verde más intenso. La palabra del semáforo sigue con sus umbrales.
  *
  * Solo para lecturas de «mayor es mejor» (el ingreso). Devuelve tokens CSS,
  * no hex: el tema oscuro trae sus propios tonos.
@@ -38,23 +44,30 @@ export function colorDeCumplimiento(cumplimiento: number | null): string {
 }
 
 /**
- * Las paradas de la escala continua, por cumplimiento. Cada cambio de color
- * ocupa solo dos puntos DESPUÉS de su umbral: el color coincide con la
- * palabra del semáforo salvo en esa transición mínima, y dentro de la franja
- * verde se va haciendo más intenso hasta el plan cumplido.
+ * Las paradas de la escala continua, por cumplimiento: del rojo al amarillo
+ * en la primera mitad larga, del amarillo al verde hasta el 90 % y, de ahí
+ * al plan, el verde se hace más intenso.
  */
 const PARADAS: Array<{ posicion: number; color: string }> = [
   { posicion: 0, color: TOKEN.critico },
-  { posicion: UMBRALES_POR_DEFECTO.alerta, color: TOKEN.critico },
-  { posicion: UMBRALES_POR_DEFECTO.alerta + 0.02, color: TOKEN.alerta },
-  { posicion: UMBRALES_POR_DEFECTO.ok, color: TOKEN.alerta },
-  { posicion: UMBRALES_POR_DEFECTO.ok + 0.02, color: TOKEN.ok },
+  { posicion: 0.6, color: TOKEN.alerta },
+  { posicion: 0.9, color: TOKEN.ok },
   { posicion: 1, color: TOKEN['ok-fuerte'] },
 ]
 
 /**
+ * La escala continua como degradado CSS, de 0 (a la izquierda) al plan
+ * entero (a la derecha). En oklch, como `colorEnPosicion`: del rojo al
+ * amarillo pasa por naranja, y del amarillo al verde, por verde oliva.
+ */
+export function degradadoDeCumplimiento(): string {
+  const paradas = PARADAS.map((p) => `${p.color} ${Math.round(p.posicion * 100)}%`).join(', ')
+  return `linear-gradient(in oklch 90deg, ${paradas})`
+}
+
+/**
  * El color de un cumplimiento en la escala continua (0 = nada, 1 = el plan
- * entero). Es el color del anillo del Dinero.
+ * entero). Es el color del anillo del Dinero en cada punto de su recorrido.
  */
 export function colorEnPosicion(posicion: number): string {
   if (posicion <= 0) return PARADAS[0].color

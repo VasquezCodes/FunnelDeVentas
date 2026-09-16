@@ -48,14 +48,15 @@ import { contarHasta, gsap, prefiereQuietud, SplitText, useGSAP } from '@/lib/an
  * Las cuatro cifras que resumen un mes. Ni una más: es una cabecera.
  *
  * El ingreso, los leads y las ventas son parte de su plan («de 145 del
- * plan»); la captación es un gasto y se compara con él («frente a…»), como
- * los costes de las fichas.
+ * plan»); el gasto de captación se compara con él («frente a…»), como los
+ * costes de las fichas. Su nombre entero: «Captación» a secas no decía que
+ * es dinero gastado.
  */
 const GENERALES: Array<{ id: string; etiqueta: string; relacion: 'de' | 'frente' }> = [
   { id: 'ingreso-total', etiqueta: 'Ingreso', relacion: 'de' },
   { id: 'eleads', etiqueta: 'Engaged leads', relacion: 'de' },
   { id: 'ventas', etiqueta: 'Ventas', relacion: 'de' },
-  { id: 'captacion-total', etiqueta: 'Captación', relacion: 'frente' },
+  { id: 'captacion-total', etiqueta: 'Gasto de captación', relacion: 'frente' },
 ]
 
 /**

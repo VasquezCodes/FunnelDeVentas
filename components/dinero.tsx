@@ -24,22 +24,24 @@
  * con la raya simple de la suma y la doble de la contabilidad. La moneda
  * dice cuánto; el libro, de dónde.
  *
- * ── Color: del rojo al verde ────────────────────────────────────────────
- * El anillo toma el color de lo cerca que está el mes de su plan: rojo por
- * debajo del 80 %, ámbar hasta el 95 %, verde después y un verde más intenso
- * al cumplirlo entero (`lib/color-cumplimiento.ts`, con los umbrales del
- * semáforo, así que el color y la palabra del centro nunca se contradicen).
- * Lo pidió el usuario: «arrancar en rojo, amarillo, verde, más verde
- * mientras más cerca del plan». Con la captura quincena a quincena, el
- * anillo va cambiando de color a medida que entra el dinero.
+ * ── Color: del rojo al verde, a lo largo del recorrido ───────────────────
+ * El anillo arranca en rojo en las doce y, según avanza hacia el plan, se va
+ * convirtiendo en amarillo (hacia el 60 %) y en verde (hacia el 90 %), con el
+ * verde más intenso al cerrarlo (`colorEnPosicion`). Así el color de la punta
+ * dice cuánto se avanzó: un 68 % acaba en amarillo, no en rojo. Lo pidió el
+ * usuario así; antes el anillo entero tomaba el color de la franja del
+ * semáforo y un 68 % era «super rojo». La palabra del centro sigue siendo la
+ * del semáforo, con sus umbrales.
  *
- * Hubo una versión con un degradado a lo largo del recorrido. Se descartó
- * antes de enseñarla: un mes al 130 % pintaba de rojo más de la mitad del
- * anillo, y un buen mes se leía como una alarma.
+ * El SVG no tiene degradados que sigan un círculo: cada partida se dibuja en
+ * tramos de pocos grados, cada uno del color de su posición, que se solapan
+ * un poco para no dejar costuras. La opacidad del resalte va en el grupo de
+ * la partida, para que los solapes no se marquen al apagarla.
  *
- * Las barras de cumplimiento del libro toman el color de su propia franja.
- * Las pastillas conservan la rampa de verdes (`--dinero-1` a `--dinero-5`):
- * son identidad de la partida, no juicio.
+ * Las barras de cumplimiento del libro llevan la misma escala: el degradado
+ * entero mide lo que su plan, así que cada barra acaba en el color que el
+ * anillo tendría a esa altura. Las pastillas conservan la rampa de verdes
+ * (`--dinero-1` a `--dinero-5`): son identidad de la partida, no juicio.
  *
  * ── Movimiento ──────────────────────────────────────────────────────────
  * GSAP (`construirEntrada`): el canto se acuña en un barrido, el anillo se
@@ -76,7 +78,7 @@ import {
   formatearValor,
 } from '@/lib/comparacion'
 import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
-import { colorDeCumplimiento, colorEnPosicion } from '@/lib/color-cumplimiento'
+import { colorDeCumplimiento, colorEnPosicion, degradadoDeCumplimiento } from '@/lib/color-cumplimiento'
 import { cn } from '@/lib/utils'
 
 // ── Modelo ──────────────────────────────────────────────────────────────
@@ -142,6 +144,9 @@ const GROSOR_VUELTA = 5
 const R_CARA = 98
 /** Hueco entre partidas del anillo, en grados: el hueco del color de la tarjeta. */
 const HUECO_GRADOS = 1.4
+/** Cada tramo de color del anillo, en grados, y lo que pisa al siguiente. */
+const PASO_COLOR = 3
+const SOLAPE_COLOR = 0.8
 /** El guilloché: una roseta de círculos que deja libre el centro. */
 const GUILLOCHE_CIRCULOS = 36
 const GUILLOCHE_RADIO = 30
@@ -173,6 +178,26 @@ function trazoArco(radio: number, desde: number, hasta: number): string {
   const largo = hasta - desde > 180 ? 1 : 0
   const f = (n: number) => n.toFixed(2)
   return `M ${f(x0)} ${f(y0)} A ${radio} ${radio} 0 ${largo} 1 ${f(x1)} ${f(y1)}`
+}
+
+/**
+ * Un arco del anillo en tramos de color: cada uno del color de su posición
+ * en la vuelta (0° = nada, 360° = el plan) y alargado un poco sobre el
+ * siguiente, salvo el último, que respeta el hueco con la partida vecina.
+ */
+function tramosDeColor(desde: number, hasta: number) {
+  const cuantos = Math.max(1, Math.ceil((hasta - desde) / PASO_COLOR))
+  const paso = (hasta - desde) / cuantos
+  return Array.from({ length: cuantos }, (_, j) => {
+    const inicio = desde + j * paso
+    const fin = inicio + paso
+    return {
+      desde: inicio,
+      hasta: j === cuantos - 1 ? fin : Math.min(hasta, fin + SOLAPE_COLOR),
+      grados: paso,
+      color: colorEnPosicion((inicio + fin) / 2 / 360),
+    }
+  })
 }
 
 /** Suma de un lado; null si no hay ni un dato (no es lo mismo que 0). */
@@ -286,7 +311,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
     ambito: refHoja,
     firma,
     datos: actual,
-    construir: (raiz, herramientas) => construirEntrada(raiz, herramientas, arcos),
+    construir: (raiz, herramientas) => construirEntrada(raiz, herramientas),
   })
 
   const hayCifras = piezas.some((p) => (p.plan ?? 0) > 0 || (p.real ?? 0) > 0)
@@ -324,11 +349,8 @@ export function Dinero({ serie, periodoId }: DineroProps) {
               resaltada={resalte?.id ?? null}
               onResaltar={(id) => setResalte(id === null ? null : { id, desde: 'moneda' })}
               etiqueta={`Ingreso del mes: ${lecturaTotal.cifra}, ${lecturaTotal.relacion}; ${ETIQUETAS_ESTADO[total.estado]}.`}
-              color={
-                total.cumplimiento === null
-                  ? colorDeCumplimiento(null)
-                  : colorEnPosicion(total.cumplimiento)
-              }
+              // Sin plan con que medir, la vuelta no es el plan: el anillo va en gris.
+              enEscala={total.cumplimiento !== null && planTotal !== null && planTotal > 0}
             >
               <p className="text-[0.6875rem] text-muted-foreground">Ingreso del mes</p>
               <p
@@ -405,15 +427,15 @@ function Moneda({
   resaltada,
   onResaltar,
   etiqueta,
-  color,
+  enEscala,
   children,
 }: {
   arcos: Arco[]
   resaltada: string | null
   onResaltar: (id: string | null) => void
   etiqueta: string
-  /** El color del anillo: el de lo cerca que está el mes de su plan. */
-  color: string
+  /** El anillo va del rojo al verde según avanza hacia el plan; si no, en gris. */
+  enEscala: boolean
   children: ReactNode
 }) {
   return (
@@ -487,31 +509,48 @@ function Moneda({
         </g>
 
         {/* El real, partida a partida, en el sentido de las agujas: en el
-            anillo, en el color de lo cerca que está el mes de su plan; lo que
-            pasa del plan, en la segunda vuelta de fuera, en violeta. */}
-        {arcos.map((arco, i) =>
-          arco.hasta - arco.desde > HUECO_GRADOS ? (
-            <path
+            anillo, del rojo al verde según avanza hacia el plan; lo que pasa
+            del plan, en la segunda vuelta de fuera, en violeta. */}
+        {arcos.map((arco) => {
+          if (arco.hasta - arco.desde <= HUECO_GRADOS) return null
+          const desde = arco.desde + HUECO_GRADOS / 2
+          const hasta = arco.hasta - HUECO_GRADOS / 2
+          const tramos =
+            arco.vuelta === 0 && enEscala
+              ? tramosDeColor(desde, hasta)
+              : [
+                  {
+                    desde,
+                    hasta,
+                    grados: hasta - desde,
+                    color: arco.vuelta === 1 ? 'var(--sobre-plan)' : colorDeCumplimiento(null),
+                  },
+                ]
+          const radio = arco.vuelta === 1 ? R_VUELTA : R_ANILLO
+          return (
+            <g
               key={`${arco.pieza.id}-${arco.vuelta}`}
-              data-segmento={i}
-              d={trazoArco(
-                arco.vuelta === 1 ? R_VUELTA : R_ANILLO,
-                arco.desde + HUECO_GRADOS / 2,
-                arco.hasta - HUECO_GRADOS / 2,
-              )}
-              fill="none"
-              strokeWidth={arco.vuelta === 1 ? GROSOR_VUELTA : GROSOR_ANILLO}
-              strokeLinecap="butt"
-              className="transition-[opacity,stroke] duration-500"
-              style={{
-                stroke: arco.vuelta === 1 ? 'var(--sobre-plan)' : color,
-                opacity: resaltada !== null && resaltada !== arco.pieza.id ? 0.25 : undefined,
-              }}
+              className="transition-opacity duration-500"
+              style={{ opacity: resaltada !== null && resaltada !== arco.pieza.id ? 0.25 : undefined }}
               onPointerEnter={() => onResaltar(arco.pieza.id)}
               onPointerLeave={() => onResaltar(null)}
-            />
-          ) : null,
-        )}
+            >
+              {tramos.map((tramo, j) => (
+                <path
+                  key={j}
+                  data-segmento
+                  data-grados={tramo.grados}
+                  d={trazoArco(radio, tramo.desde, tramo.hasta)}
+                  fill="none"
+                  strokeWidth={arco.vuelta === 1 ? GROSOR_VUELTA : GROSOR_ANILLO}
+                  strokeLinecap="butt"
+                  className="transition-[stroke] duration-500"
+                  style={{ stroke: tramo.color }}
+                />
+              ))}
+            </g>
+          )
+        })}
       </svg>
 
       {/* La cara de la moneda: el texto en HTML, con la tipografía de la
@@ -717,11 +756,11 @@ function LibroCuentas({
 /**
  * El cumplimiento de una fila: una barra fina (el real sobre su plan, que es
  * la pista entera) y el porcentaje. En una hoja estrecha no se pinta: se
- * oculta la columna entera. La barra lleva el color de su franja, el mismo
- * que el anillo tendría a esa altura: rojo, ámbar o verde.
+ * oculta la columna entera. La barra lleva la escala del anillo: arranca en
+ * rojo y acaba en el color que el anillo tendría a esa altura.
  */
 function Cumplimiento({ valor, fuerte = false }: { valor: number | null; fuerte?: boolean }) {
-  const color = colorDeCumplimiento(valor)
+  const lleno = valor === null ? 0 : Math.min(1, valor)
   return (
     <span className="inline-flex items-center justify-end gap-2.5">
       <span
@@ -729,11 +768,17 @@ function Cumplimiento({ valor, fuerte = false }: { valor: number | null; fuerte?
         className="relative h-1 w-14 overflow-hidden rounded-full"
         style={{ backgroundColor: 'color-mix(in oklab, var(--serie-plan) 26%, transparent)' }}
       >
-        {valor !== null && valor > 0 && (
+        {lleno > 0 && (
           <span
             data-barrita
             className="absolute inset-y-0 left-0 rounded-full"
-            style={{ width: `${Math.min(1, valor) * 100}%`, backgroundColor: color }}
+            style={{
+              width: `${lleno * 100}%`,
+              // El degradado mide la pista entera (el plan): la barra enseña
+              // solo el tramo que recorrió.
+              backgroundImage: degradadoDeCumplimiento(),
+              backgroundSize: `${100 / lleno}% 100%`,
+            }}
           />
         )}
       </span>
@@ -758,10 +803,7 @@ function LeyendaDinero({ sobrePlan }: { sobrePlan: boolean }) {
         <span
           aria-hidden="true"
           className="h-1 w-6 shrink-0 rounded-full"
-          style={{
-            background:
-              'linear-gradient(90deg, var(--estado-critico), var(--estado-alerta) 60%, var(--estado-ok))',
-          }}
+          style={{ backgroundImage: degradadoDeCumplimiento() }}
         />
         Real
       </span>
@@ -813,7 +855,6 @@ function LeyendaDinero({ sobrePlan }: { sobrePlan: boolean }) {
 function construirEntrada(
   raiz: HTMLElement,
   { contar }: HerramientasEntrada,
-  arcos: Arco[],
 ): gsap.core.Timeline | null {
   const todos = (selector: string) => Array.from(raiz.querySelectorAll<HTMLElement>(selector))
   const muescas = Array.from(raiz.querySelectorAll('[data-muesca]'))
@@ -835,14 +876,13 @@ function construirEntrada(
   }
   linea.fromTo(surcos, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'none' }, 0.1)
 
-  // El anillo, partida a partida, a velocidad constante: la duración de
-  // cada tramo es proporcional a los grados que ocupa.
+  // El anillo, tramo a tramo, a velocidad constante: la duración de cada
+  // tramo es proporcional a los grados que avanza (sin contar su solape).
   const inicioAnillo = 0.35
   let t = inicioAnillo
   segmentos.forEach((segmento) => {
-    const arco = arcos[Number(segmento.getAttribute('data-segmento'))]
-    const grados = arco ? arco.hasta - arco.desde : 0
-    const duracion = Math.max(0.05, (grados / 360) * DURACION_ANILLO)
+    const grados = Number(segmento.getAttribute('data-grados')) || 0
+    const duracion = Math.max(0.002, (grados / 360) * DURACION_ANILLO)
     linea.fromTo(
       segmento,
       { drawSVG: '0% 0%' },
