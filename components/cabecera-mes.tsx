@@ -70,6 +70,8 @@ const FILETES = [
   '@max-[36rem]:border-t @max-[36rem]:pt-4 @[36rem]:border-l @[36rem]:pl-5 @[72rem]:pl-6',
   'border-l pl-5 @max-[36rem]:border-t @max-[36rem]:pt-4 @[72rem]:pl-6',
 ]
+/** El aire a la derecha de cada cifra: el mismo que a la izquierda del filete. */
+const AIRE_DERECHO = 'pr-5 @[72rem]:pr-6'
 
 export interface CabeceraMesProps {
   periodo: Periodo
@@ -100,10 +102,10 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
   // El nombre del mes va suelto para poder animarlo por letras; el año
   // acompaña en un cuerpo mucho menor. Siempre con mayúscula inicial:
   // MESES_LARGOS está en minúscula para poder usarlo dentro de una frase.
-  const nombreMes =
-    periodo.tipo === 'mes'
-      ? capitalizar(MESES_LARGOS[periodo.mes - 1])
-      : `${periodo.quincena}ª quincena · ${capitalizar(MESES_LARGOS[periodo.mes - 1])}`
+  // En una quincena, «2ª quincena» va encima y pequeño: en una sola línea
+  // («2ª quincena · Septiembre 2026») el título se comía el ancho de las
+  // cifras y el ingreso se salía por el borde.
+  const nombreMes = capitalizar(MESES_LARGOS[periodo.mes - 1])
 
   // ── La entrada, al cargar ──────────────────────────────────────────────
   // El título, la raya de marca y las columnas no cambian con el mes: entran
@@ -246,7 +248,13 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               cifras; si no cabe, va encima de ellas. */}
           <div className="col-span-full pb-5 @[72rem]:col-span-1 @[72rem]:row-span-3 @[72rem]:grid @[72rem]:grid-rows-subgrid @[72rem]:pr-8 @[72rem]:pb-0">
             <dt className="sr-only">Periodo</dt>
-            <dd className="flex items-baseline gap-x-2.5 self-end @[72rem]:row-start-2">
+            <dd className="self-end @[72rem]:row-start-2">
+              {periodo.tipo === 'quincena' && (
+                <span className="mb-2 block text-sm leading-none font-medium text-muted-foreground sm:text-base">
+                  {periodo.quincena}ª quincena
+                </span>
+              )}
+              <span className="flex items-baseline gap-x-2.5">
               {/*
                 La `key` es obligatoria y no es una optimización.
 
@@ -282,6 +290,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
                   · {marcaCobertura(periodo)}
                 </span>
               )}
+              </span>
             </dd>
           </div>
 
@@ -289,7 +298,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
             <div
               key={cifra.id}
               data-columna
-              className={cn('row-span-3 grid min-w-0 grid-rows-subgrid pr-4', FILETES[i])}
+              className={cn('row-span-3 grid min-w-0 grid-rows-subgrid', AIRE_DERECHO, FILETES[i])}
               style={{ borderColor: 'var(--regla-fina)' }}
             >
               <dt className="flex min-h-6 flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[0.8125rem] font-medium text-muted-foreground">
@@ -305,7 +314,10 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               </dt>
               <dd
                 data-cifra={i}
-                className="font-display mt-2 self-end text-[clamp(1.5rem,1rem+1.2vw,2rem)] leading-none font-semibold tabular-nums"
+                // El cuerpo sigue al ancho de la cabecera (cqi), no al de la
+                // ventana: con el panel del mes al lado, «$101,082» tiene que
+                // caber en su columna. Nunca se parte.
+                className="font-display mt-2 self-end text-[clamp(1.375rem,2.2cqi,2rem)] leading-none font-semibold whitespace-nowrap tabular-nums"
                 style={{
                   color: cifra.lectura.apagada
                     ? 'var(--muted-foreground)'

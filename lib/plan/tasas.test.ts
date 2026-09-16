@@ -35,9 +35,17 @@ describe('construirTasas', () => {
     expect(tasa?.canal).toBe('publicidad')
   })
 
+  it('repite la cualificación en cada canal, para los libros que reparten Discoveries', () => {
+    const tasa = buscar('llamadas.referidos', 'discoveries.referidos')
+    expect(tasa?.plan).toBe(0.3)
+    expect(tasa?.canal).toBe('referidos')
+  })
+
   it('no inventa tasas que el Excel no tiene: nada de llamada a venta', () => {
     expect(buscar('llamadas', 'ventas')).toBeUndefined()
     expect(buscar('llamadas.referidos', 'ventas.referidos')).toBeUndefined()
+    // Propuestas no se reparte por canal: tras Discoveries no hay tasa por canal.
+    expect(buscar('discoveries.referidos', 'ventas.referidos')).toBeUndefined()
   })
 
   it('ata las variables previas de cada canal a sus leads', () => {

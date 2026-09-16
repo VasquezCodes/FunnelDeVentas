@@ -306,6 +306,7 @@ export function Tablero({
           realesQ1={realesPorPeriodo[idQ1] ?? []}
           realesQ2={realesPorPeriodo[idQ2] ?? []}
           tasas={tasas}
+          plan={procedencia ? { libro: procedencia.libro, modificadoEn: procedencia.modificadoEn } : null}
           // Guardar reemplaza las dos quincenas enteras: si no se pudo leer lo
           // guardado, guardar ahora borraría lo que no se ha cargado.
           bloqueo={

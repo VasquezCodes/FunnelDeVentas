@@ -1,7 +1,7 @@
 /**
  * Los totales de una quincena, calculados y nunca tecleados.
  *
- * La captura solo pide las partes —cada canal, cada partida— y los cinco
+ * La captura solo pide las partes —cada canal, cada partida— y los
  * totales salen de sumarlas (`lib/plan/sumas.ts`). Así no pueden descuadrar:
  * es la comprobación de las filas «Cero» del Excel, hecha imposible de fallar.
  *
@@ -17,20 +17,27 @@ import type { ValoresPorQuincena } from '@/lib/reales/mes'
 const alCentimo = (n: number) => Math.round(n * 100) / 100
 
 /**
- * Las cifras de UNA quincena, con los cinco totales añadidos.
+ * Las cifras de UNA quincena, con los totales del plan en uso añadidos.
  *
- * Cada total es la suma de los sumandos con dato; un 0 cuenta como dato. Si
- * ninguno lo tiene, el total no aparece: escribir un 0 afirmaría que no hubo
- * nada, y lo que pasa es que nadie lo ha capturado. Un total que ya viniera
- * en la entrada —tecleado antes de que existiera esta regla— nunca gana a
- * la suma.
+ * `calculados` son los totales de ese plan (`totalesCalculadosEn`). Cada uno
+ * es la suma de los sumandos con dato; un 0 cuenta como dato. Si ninguno lo
+ * tiene, el total no aparece: escribir un 0 afirmaría que no hubo nada, y lo
+ * que pasa es que nadie lo ha capturado. Un total que ya viniera en la
+ * entrada —tecleado antes— nunca cuenta: ni gana a la suma ni la sustituye.
+ *
+ * Así pasa con Discoveries al cambiar a un libro que la reparte por canal: la
+ * cifra que se tecleó con el libro anterior deja de verse, y el total es lo
+ * que digan sus canales, lo mismo que enseña la captura. Con un libro que no
+ * la reparte no es un total y vale lo tecleado.
  */
 export function completarTotales(
   valores: Readonly<Record<string, number>>,
+  calculados: ReadonlySet<string>,
 ): Record<string, number> {
   const salida: Record<string, number> = { ...valores }
 
   for (const [total, sumandos] of SUMANDOS) {
+    if (!calculados.has(total)) continue
     delete salida[total]
     const conDato = sumandos.filter((id) => valores[id] !== undefined)
     if (conDato.length === 0) continue
@@ -65,8 +72,11 @@ export function sumandosConDato(
  * vacía— se compararía con el plan del mes entero y saldría «Fuera de plan»
  * por estar a medias.
  */
-export function completarQuincenas(quincenas: Readonly<ValoresPorQuincena>): ValoresPorQuincena {
+export function completarQuincenas(
+  quincenas: Readonly<ValoresPorQuincena>,
+  calculados: ReadonlySet<string>,
+): ValoresPorQuincena {
   const salida: ValoresPorQuincena = {}
-  for (const [id, valores] of Object.entries(quincenas)) salida[id] = completarTotales(valores)
+  for (const [id, valores] of Object.entries(quincenas)) salida[id] = completarTotales(valores, calculados)
   return salida
 }

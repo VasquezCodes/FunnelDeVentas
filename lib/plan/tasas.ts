@@ -41,15 +41,26 @@ const DEFINICIONES: DefTasa[] = [
   { definido: 'CVR_Propuestas', nombre: 'Tasa de propuestas', desde: 'discoveries', hacia: 'propuestas' },
   { definido: 'CVR_Cierre', nombre: 'Tasa de cierre', desde: 'propuestas', hacia: 'ventas' },
 
-  // ── La conversión a llamada, canal a canal ───────────────────────────
-  // Es la única etapa que el Excel reparte por canal a los dos lados: los
-  // leads de Publicidad × 60 % son las llamadas de Publicidad.
+  // ── Las mismas tasas, canal a canal ──────────────────────────────────
+  // Donde el Excel reparte por canal las dos etapas, la tasa del plan es la
+  // misma en cada canal: los leads de Publicidad × 60 % son las llamadas de
+  // Publicidad. La cualificación solo en los libros que reparten Discoveries
+  // (desde el 0726); Propuestas no se reparte, y detrás no hay más.
   ...CANALES.map(
     (canal): DefTasa => ({
       definido: 'CVR_Llamada',
       nombre: 'Tasa de conversión a llamada',
       desde: `eleads.${canal}`,
       hacia: `llamadas.${canal}`,
+      canal,
+    }),
+  ),
+  ...CANALES.map(
+    (canal): DefTasa => ({
+      definido: 'CVR_Cualificación',
+      nombre: 'Tasa de cualificación',
+      desde: `llamadas.${canal}`,
+      hacia: `discoveries.${canal}`,
       canal,
     }),
   ),

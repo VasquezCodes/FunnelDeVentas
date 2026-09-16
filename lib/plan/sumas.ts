@@ -1,7 +1,7 @@
 /**
  * Qué indicadores son la suma de otros.
  *
- * En el Excel, cinco filas no se planifican: salen de sumar otras. El total
+ * En el Excel, varias filas no se planifican: salen de sumar otras. El total
  * de cada etapa repartida es la suma de sus canales —las filas «Cero» de la
  * hoja lo comprueban—, el ingreso es la suma de sus partidas y el gasto de
  * captación, la de sus canales. Es un hecho del plan, no de una pantalla, y
@@ -10,6 +10,11 @@
  * Se deriva del catálogo en vez de escribirse a mano: si un día el Excel
  * estrena canal, el catálogo lo recoge y los totales lo suman sin tocar este
  * archivo.
+ *
+ * Discoveries es un total solo en los libros que la reparten por canal
+ * (desde el 0726). En los anteriores es una cifra que se teclea. Por eso lo
+ * que se calcula en un plan concreto lo dice `totalesCalculadosEn`, con las
+ * filas que ese libro trae.
  */
 
 import type { Indicador } from '@/lib/tipos'
@@ -26,7 +31,7 @@ function idsDonde(condicion: (i: Indicador) => boolean): string[] {
  * importe ya entra por «Altas ARCO».
  */
 export const SUMANDOS: ReadonlyMap<string, readonly string[]> = new Map([
-  ...['eleads', 'llamadas', 'ventas'].map(
+  ...['eleads', 'llamadas', 'discoveries', 'ventas'].map(
     (etapa) => [etapa, idsDonde((i) => i.desglosaA === etapa)] as const,
   ),
   [
@@ -36,13 +41,23 @@ export const SUMANDOS: ReadonlyMap<string, readonly string[]> = new Map([
   ['captacion-total', idsDonde((i) => i.grupo === 'captacion' && i.canal !== undefined)],
 ])
 
-/** Los indicadores que se calculan y nunca se teclean ni se guardan. */
+/** Todos los indicadores que pueden calcularse, en algún libro. */
 export const TOTALES_CALCULADOS: ReadonlySet<string> = new Set(SUMANDOS.keys())
 
+/** Los totales que se calculan en un plan: los que tienen alguna de sus partes entre sus filas. */
+export function totalesCalculadosEn(ids: Iterable<string>): Set<string> {
+  const delPlan = new Set(ids)
+  return new Set(
+    [...SUMANDOS].filter(([, sumandos]) => sumandos.some((id) => delPlan.has(id))).map(([total]) => total),
+  )
+}
+
 /**
- * Los ids que se pueden teclear y guardar: todos menos los totales. La
- * acción de guardar rechaza cualquier otro.
+ * Los ids que se pueden teclear y guardar en un plan: todos menos sus
+ * totales. La acción de guardar rechaza cualquier otro.
  */
 export function idsCapturables(ids: Iterable<string>): Set<string> {
-  return new Set([...ids].filter((id) => !TOTALES_CALCULADOS.has(id)))
+  const lista = [...ids]
+  const calculados = totalesCalculadosEn(lista)
+  return new Set(lista.filter((id) => !calculados.has(id)))
 }

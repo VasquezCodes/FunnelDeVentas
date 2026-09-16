@@ -11,15 +11,18 @@
 
 import 'server-only'
 
+import { createHash } from 'node:crypto'
 import { cache } from 'react'
 
 import type { FuenteDatos, Indicador, Meta, Periodo, Real, TasaDelPlan } from '@/lib/tipos'
 import { compararPeriodos } from '@/lib/periodos'
 import { cachearLecturaDelPlan, descargarLibro } from '@/lib/plan/graph'
+import { enlaceDelPlan } from '@/lib/plan/enlace'
 import { leerPlan, type PlanLeido } from '@/lib/plan/excel'
 import { conQuincenas } from '@/lib/plan/quincenas'
 import { estadoDeQuincenas } from '@/lib/reales/almacen'
 import { completarQuincenas } from '@/lib/captura/totales'
+import { totalesCalculadosEn } from '@/lib/plan/sumas'
 import { coberturaDelMes, idsDeQuincenas, metasDelMes, realesDelPeriodo } from '@/lib/reales/mes'
 
 /** Lo que se guarda en caché: el resultado de leer, nunca el binario. */
@@ -29,8 +32,8 @@ interface PlanEnCache extends PlanLeido {
   leidoEn: string
 }
 
-const leerDelOrigen = async (): Promise<PlanEnCache> => {
-  const { contenido, nombre, modificadoEn } = await descargarLibro()
+const leerDelOrigen = async (url: string): Promise<PlanEnCache> => {
+  const { contenido, nombre, modificadoEn } = await descargarLibro(url)
   const leido = leerPlan(contenido)
 
   // El Excel es mensual. Las quincenas se derivan partiendo la meta por la
@@ -65,9 +68,16 @@ const leerDelOrigen = async (): Promise<PlanEnCache> => {
  * (metas y reales de cada periodo). `cache` de React lo reduce a una lectura
  * por petición: sin esto, pintar el tablero tras guardar tardaba segundos.
  */
-// La clave cambia cuando cambia la forma de lo guardado: con la de antes, la
-// caché serviría media hora un plan sin tasas.
-const obtenerPlan = cache(cachearLecturaDelPlan('plan-de-ventas-con-tasas', leerDelOrigen))
+//
+// La clave de la caché lleva el enlace y su versión: al elegir otro libro
+// desde la captura —o volver a guardar el mismo— se lee el Excel en ese
+// momento, sin esperar la media hora. El prefijo cambia cuando cambia la
+// forma de lo guardado, para no servir un plan con la forma de antes.
+const obtenerPlan = cache(async (): Promise<PlanEnCache> => {
+  const { url, version } = await enlaceDelPlan()
+  const huella = createHash('sha256').update(`${url}|${version}`).digest('hex').slice(0, 24)
+  return cachearLecturaDelPlan(`plan-de-ventas-discoveries-por-canal:${huella}`, () => leerDelOrigen(url))()
+})
 
 /**
  * Las quincenas guardadas, con sus totales ya calculados, una vez por
@@ -75,9 +85,12 @@ const obtenerPlan = cache(cachearLecturaDelPlan('plan-de-ventas-con-tasas', leer
  * completan aquí para que los reales, la meta a la fecha y la cobertura
  * vean las mismas cifras.
  */
-const quincenasCompletas = cache(async () =>
-  completarQuincenas((await estadoDeQuincenas()).quincenas),
-)
+const quincenasCompletas = cache(async () => {
+  // Los totales del libro en uso: con uno que reparte Discoveries por canal,
+  // una cifra de Discoveries tecleada con el libro anterior ya no cuenta.
+  const [plan, estado] = await Promise.all([obtenerPlan(), estadoDeQuincenas()])
+  return completarQuincenas(estado.quincenas, totalesCalculadosEn(plan.indicadores.map((i) => i.id)))
+})
 
 /** Estado de la lectura, para que la interfaz pueda decir de dónde viene. */
 export interface ProcedenciaDelPlan {

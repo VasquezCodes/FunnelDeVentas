@@ -18,7 +18,8 @@
  * real y su plan, y en cada flecha la tasa que convierte un paso en el
  * siguiente, real frente a la del plan. Publicidad: impresiones → clics →
  * leads → llamadas → ventas. Solo llevan tasa las flechas que el Excel tiene:
- * de llamadas a ventas no hay tasa por canal y esa flecha va sola.
+ * hacia ventas no hay tasa por canal y esa flecha va sola. Con un libro que
+ * reparte Discoveries, entre llamadas y ventas va también ese paso.
  */
 
 import { lecturaDe, puntoCalculado, puntoDeComparativa, type PuntoDeSerie, type PuntoFicha } from '@/components/graficos/fichas'
@@ -79,11 +80,13 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
     'menor-mejor',
   )
 
-  // La cadena: las variables previas del canal y, detrás, su embudo.
+  // La cadena: las variables previas del canal y, detrás, su embudo. Las
+  // discoveries, solo si el libro las reparte por canal.
   const pasos = [
     ...PREVIAS[canal],
     { id: `eleads.${canal}`, nombre: 'Leads' },
     { id: `llamadas.${canal}`, nombre: 'Llamadas' },
+    { id: `discoveries.${canal}`, nombre: 'Discoveries' },
     { id: `ventas.${canal}`, nombre: 'Ventas' },
   ].filter((p) => buscar(p.id) !== undefined)
 
@@ -107,8 +110,8 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
               return (
                 <li key={paso.id} className="contents">
                   <Paso nombre={paso.nombre} punto={punto(paso.id)} />
-                  {/* Sin tasa en el Excel (de llamadas a ventas no la hay por
-                      canal), la flecha va sola: no se inventa una cifra. */}
+                  {/* Sin tasa en el Excel (hacia ventas no la hay por canal),
+                      la flecha va sola: no se inventa una cifra. */}
                   {siguiente && (
                     <Flecha
                       tasa={

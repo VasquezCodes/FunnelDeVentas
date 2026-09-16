@@ -5,13 +5,13 @@
  *
  *  - Vacío no es cero. Una casilla vacía —o un separador suelto, estado
  *    intermedio real al teclear «,5»— no es un número y no se guarda.
- *  - Los totales no se teclean. Lo guardado llega con los cinco totales ya
- *    calculados (`completarQuincenas`); si pasaran al borrador, viajarían al
- *    guardar y la acción los rechazaría.
+ *  - Solo lo que se teclea. Lo guardado llega con los totales ya calculados
+ *    (`completarQuincenas`); si pasaran al borrador, viajarían al guardar y
+ *    la acción los rechazaría. Qué se teclea depende del libro: Discoveries
+ *    es una casilla en los que no la reparten y un total en los que sí.
  */
 
 import type { Real } from '@/lib/tipos'
-import { TOTALES_CALCULADOS } from '@/lib/plan/sumas'
 
 /** Texto de cada casilla, por id de indicador. */
 export type Borrador = Record<string, string>
@@ -33,11 +33,11 @@ export function aNumero(texto: string): number | null {
   return Number.isFinite(valor) && valor >= 0 ? valor : null
 }
 
-/** Lo guardado → borrador editable, sin los totales calculados. */
-export function aBorrador(reales: readonly Real[]): Borrador {
+/** Lo guardado → borrador editable, solo con las casillas del plan (`idsCapturables`). */
+export function aBorrador(reales: readonly Real[], capturables: ReadonlySet<string>): Borrador {
   const borrador: Borrador = {}
   for (const real of reales) {
-    if (TOTALES_CALCULADOS.has(real.indicadorId)) continue
+    if (!capturables.has(real.indicadorId)) continue
     borrador[real.indicadorId] = Number.isFinite(real.valor) ? String(real.valor) : ''
   }
   return borrador

@@ -108,7 +108,7 @@ async function localizarLibro(token: string, urlFichero: string): Promise<Locali
     // la ruta lleva año y mes ('2026/04 - Abril/Plan de Negocio 0426.xlsm').
     throw new Error(
       `No se encuentra el libro del plan (${respuesta.status}). ` +
-        `Comprueba SHAREPOINT_PLAN_URL: la ruta incluye el mes y cambia al cerrar cada uno. ` +
+        `Comprueba el enlace: la ruta incluye el mes y cambia al cerrar cada uno, y la aplicación tiene que tener acceso al archivo. ` +
         `Graph dijo: ${error?.error?.message ?? 'sin detalle'}`,
     )
   }
@@ -137,10 +137,13 @@ export interface LibroDescargado {
 /**
  * Baja el libro completo. Sin caché: quien lo llama decide si cachear el
  * binario (nunca) o el resultado de parsearlo (siempre).
+ *
+ * El enlace lo elige la captura (`lib/plan/enlace.ts`); sin él, el de la
+ * variable de entorno.
  */
-export async function descargarLibro(): Promise<LibroDescargado> {
-  const urlFichero = exigir('SHAREPOINT_PLAN_URL')
-
+export async function descargarLibro(
+  urlFichero: string = exigir('SHAREPOINT_PLAN_URL'),
+): Promise<LibroDescargado> {
   const token = await obtenerToken()
   const { driveId, itemId, nombre, modificadoEn } = await localizarLibro(token, urlFichero)
 

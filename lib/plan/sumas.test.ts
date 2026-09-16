@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { SUMANDOS, TOTALES_CALCULADOS, idsCapturables } from '@/lib/plan/sumas'
+import { INDICADORES_DEL_PLAN } from '@/lib/plan/catalogo'
+import { SUMANDOS, TOTALES_CALCULADOS, idsCapturables, totalesCalculadosEn } from '@/lib/plan/sumas'
+
+/** Los dos libros que hay: el 0726 reparte Discoveries por canal; los anteriores, no. */
+const CON_DESGLOSE = INDICADORES_DEL_PLAN.map((i) => i.id)
+const SIN_DESGLOSE = CON_DESGLOSE.filter((id) => !id.startsWith('discoveries.'))
 
 describe('SUMANDOS', () => {
   it('el total de Engaged Leads suma sus siete canales', () => {
@@ -24,6 +29,18 @@ describe('SUMANDOS', () => {
       'llamadas.contenido',
       'llamadas.newsletter',
       'llamadas.interno',
+    ])
+  })
+
+  it('el total de Discoveries suma sus siete canales', () => {
+    expect(SUMANDOS.get('discoveries')).toEqual([
+      'discoveries.publicidad',
+      'discoveries.prospeccion',
+      'discoveries.referidos',
+      'discoveries.afiliados',
+      'discoveries.contenido',
+      'discoveries.newsletter',
+      'discoveries.interno',
     ])
   })
 
@@ -66,21 +83,47 @@ describe('SUMANDOS', () => {
   })
 })
 
-describe('idsCapturables', () => {
-  it('deja fuera los cinco totales y conserva el resto, en su orden', () => {
-    const ids = ['eleads', 'eleads.publicidad', 'discoveries', 'ingreso-total', 'ingreso-otros']
-    expect([...idsCapturables(ids)]).toEqual(['eleads.publicidad', 'discoveries', 'ingreso-otros'])
-  })
-})
-
 describe('TOTALES_CALCULADOS', () => {
-  it('son exactamente los cinco totales: ni Discoveries ni Propuestas, que no se reparten', () => {
+  it('son los seis totales que pueden calcularse; Propuestas no se reparte', () => {
     expect([...TOTALES_CALCULADOS].sort()).toEqual([
       'captacion-total',
+      'discoveries',
       'eleads',
       'ingreso-total',
       'llamadas',
       'ventas',
     ])
+  })
+})
+
+describe('totalesCalculadosEn', () => {
+  it('Discoveries solo se calcula en el libro que la reparte por canal', () => {
+    expect(totalesCalculadosEn(CON_DESGLOSE).has('discoveries')).toBe(true)
+    expect(totalesCalculadosEn(SIN_DESGLOSE).has('discoveries')).toBe(false)
+  })
+
+  it('los otros cinco se calculan en los dos libros', () => {
+    for (const ids of [CON_DESGLOSE, SIN_DESGLOSE]) {
+      expect([...totalesCalculadosEn(ids)]).toEqual(
+        expect.arrayContaining(['eleads', 'llamadas', 'ventas', 'ingreso-total', 'captacion-total']),
+      )
+    }
+  })
+})
+
+describe('idsCapturables', () => {
+  it('deja fuera los totales del plan y conserva el resto, en su orden', () => {
+    const ids = ['eleads', 'eleads.publicidad', 'discoveries', 'ingreso-total', 'ingreso-otros']
+    expect([...idsCapturables(ids)]).toEqual(['eleads.publicidad', 'discoveries', 'ingreso-otros'])
+  })
+
+  it('con Discoveries por canal se teclean sus canales y no el total', () => {
+    const ids = idsCapturables(CON_DESGLOSE)
+    expect(ids.has('discoveries')).toBe(false)
+    expect(ids.has('discoveries.publicidad')).toBe(true)
+  })
+
+  it('sin desglose, Discoveries se sigue tecleando', () => {
+    expect(idsCapturables(SIN_DESGLOSE).has('discoveries')).toBe(true)
   })
 })

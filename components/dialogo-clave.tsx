@@ -25,6 +25,11 @@ export interface DialogoClaveProps {
   cambios: number
   onConfirmar: (clave: string) => void
   onCancelar: () => void
+  /** Para otros usos que guardar cifras (cambiar el plan): el título, la frase y el botón. */
+  titulo?: string
+  descripcion?: string
+  accion?: string
+  accionEnCurso?: string
 }
 
 export function DialogoClave({
@@ -32,6 +37,10 @@ export function DialogoClave({
   guardando,
   error,
   cambios,
+  titulo = 'Confirmar cambios',
+  descripcion,
+  accion = 'Guardar',
+  accionEnCurso = 'Guardando…',
   onConfirmar,
   onCancelar,
 }: DialogoClaveProps) {
@@ -42,7 +51,12 @@ export function DialogoClave({
   useEffect(() => {
     const d = dialogo.current
     if (!d) return
-    if (abierto && !d.open) d.showModal()
+    // Cada apertura empieza con el campo vacío: una contraseña no se queda
+    // escrita en la página entre un uso y el siguiente.
+    if (abierto && !d.open) {
+      if (campo.current) campo.current.value = ''
+      d.showModal()
+    }
     if (!abierto && d.open) d.close()
   }, [abierto])
 
@@ -77,12 +91,13 @@ export function DialogoClave({
           className="font-display flex items-center gap-2 text-xl leading-tight font-semibold"
         >
           <LockKeyIcon weight="duotone" aria-hidden="true" className="size-5 shrink-0 text-brand" />
-          Confirmar cambios
+          {titulo}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {cambios === 1
-            ? '1 cifra cambiada. Escribe la contraseña de captura para guardarla.'
-            : `${cambios} cifras cambiadas. Escribe la contraseña de captura para guardarlas.`}
+          {descripcion ??
+            (cambios === 1
+              ? '1 cifra cambiada. Escribe la contraseña de captura para guardarla.'
+              : `${cambios} cifras cambiadas. Escribe la contraseña de captura para guardarlas.`)}
         </p>
 
         <label htmlFor={`${id}-clave`} className="mt-5 block text-sm font-medium">
@@ -126,7 +141,7 @@ export function DialogoClave({
             disabled={guardando}
             className="h-10 rounded-full bg-brand px-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-colors hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
           >
-            {guardando ? 'Guardando…' : 'Guardar'}
+            {guardando ? accionEnCurso : accion}
           </button>
         </div>
       </form>

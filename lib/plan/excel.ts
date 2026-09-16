@@ -202,7 +202,7 @@ export function leerPlan(contenido: ArrayBuffer): PlanLeido {
   // ── Incidencias ───────────────────────────────────────────────────────
   const incidencias: string[] = []
   for (const entrada of CATALOGO) {
-    if (encontrados.has(entrada.indicador.id)) continue
+    if (encontrados.has(entrada.indicador.id) || entrada.opcional) continue
     incidencias.push(entrada.clave ?? entrada.etiqueta ?? entrada.indicador.id)
   }
 
@@ -212,8 +212,11 @@ export function leerPlan(contenido: ArrayBuffer): PlanLeido {
 
   // ── Tasas ─────────────────────────────────────────────────────────────
   // Una tasa perdida no tumba nada: su fila enseña la real sin plan al lado.
-  const { tasas, faltan } = construirTasas(valoresDeNombres(libro))
-  for (const nombre of faltan) incidencias.push(`${HOJA_VARIABLES} · ${nombre}`)
+  // Solo quedan las que unen dos filas del libro: la cualificación canal a
+  // canal no existe en un libro que no reparte Discoveries.
+  const construidas = construirTasas(valoresDeNombres(libro))
+  const tasas = construidas.tasas.filter((t) => encontrados.has(t.desde) && encontrados.has(t.hacia))
+  for (const nombre of construidas.faltan) incidencias.push(`${HOJA_VARIABLES} · ${nombre}`)
 
   return { periodos, metas, indicadores, tasas, incidencias }
 }

@@ -8,7 +8,9 @@
  * lo va llenando en un anillo, partida a partida y en el sentido de las
  * agujas, hasta donde llega. Lo que el real no cubre se queda en el surco
  * con el mismo discontinuo con que el tablero dibuja el plan en todas
- * partes, y debajo se dice cuánto falta. En el centro, la cifra del mes y su
+ * partes, y debajo se dice cuánto falta. Si el real pasa del plan, el anillo
+ * se cierra y sigue girando por fuera: una segunda vuelta más fina, en
+ * violeta, que mide lo que sobra con la misma escala. En el centro, la cifra del mes y su
  * juicio: la moneda contesta «cuánto» y lo contesta de una vez.
  *
  * El canto acuñado y el guilloché del fondo son los de las monedas y los
@@ -110,9 +112,11 @@ interface Pieza extends PuntoFicha {
 
 interface Arco {
   pieza: Pieza
-  /** Grados desde las doce, en el sentido de las agujas. */
+  /** Grados desde las doce, en el sentido de las agujas, dentro de su vuelta. */
   desde: number
   hasta: number
+  /** 0 = el anillo del plan; 1 = la segunda vuelta, lo que pasa del plan. */
+  vuelta: 0 | 1
 }
 
 // ── Geometría de la moneda ──────────────────────────────────────────────
@@ -128,6 +132,12 @@ const R_FILO = 135
 /** El anillo del dato: su línea media y su grosor. */
 const R_ANILLO = 116
 const GROSOR_ANILLO = 20
+/**
+ * La segunda vuelta: lo que pasa del plan, por fuera del anillo, más fina y
+ * entre el anillo y el filo (con dos unidades de aire a cada lado).
+ */
+const R_VUELTA = 130.5
+const GROSOR_VUELTA = 5
 /** El borde interior, que enmarca la cara de la moneda. */
 const R_CARA = 98
 /** Hueco entre partidas del anillo, en grados: el hueco del color de la tarjeta. */
@@ -243,19 +253,30 @@ export function Dinero({ serie, periodoId }: DineroProps) {
     .filter((g) => g.piezas.length > 0)
 
   // ── El anillo: el círculo es el plan; cada partida ocupa su real ─────
+  // Si el real pasa del plan, el anillo no se comprime: se cierra entero y
+  // sigue girando por fuera, en una segunda vuelta más fina. La partida que
+  // cruza las doce se parte en dos. Más allá de dos planes, la segunda
+  // vuelta se queda cerrada; la cifra exacta la dice el pie.
   const base = planTotal !== null && planTotal > 0 ? planTotal : (realTotal ?? 0)
-  const extensiones = piezas.map((p) => (base > 0 ? ((p.real ?? 0) / base) * 360 : 0))
-  const sumaExtensiones = extensiones.reduce((s, e) => s + e, 0)
-  // Si el real pasa del plan, el anillo se cierra entero y lo que sobra se
-  // dice debajo: un anillo no da más de una vuelta.
-  const escala = sumaExtensiones > 360 ? 360 / sumaExtensiones : 1
   const arcos: Arco[] = []
   let angulo = 0
-  piezas.forEach((pieza, i) => {
-    const extension = extensiones[i] * escala
-    arcos.push({ pieza, desde: angulo, hasta: angulo + extension })
-    angulo += extension
+  piezas.forEach((pieza) => {
+    const extension = base > 0 ? (Math.max(0, pieza.real ?? 0) / base) * 360 : 0
+    const desde = angulo
+    const hasta = Math.min(720, angulo + extension)
+    if (desde < 360 && hasta > 360) {
+      arcos.push({ pieza, desde, hasta: 360, vuelta: 0 })
+      arcos.push({ pieza, desde: 0, hasta: hasta - 360, vuelta: 1 })
+    } else if (hasta > desde) {
+      arcos.push(
+        desde >= 360
+          ? { pieza, desde: desde - 360, hasta: hasta - 360, vuelta: 1 }
+          : { pieza, desde, hasta, vuelta: 0 },
+      )
+    }
+    angulo = hasta
   })
+  const haySegundaVuelta = arcos.some((a) => a.vuelta === 1)
   const diferencia =
     planTotal !== null && realTotal !== null ? realTotal - planTotal : null
 
@@ -288,7 +309,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
   return (
     <Hoja ref={refHoja}>
       <CabeceraHoja
-        leyenda={<LeyendaDinero />}
+        leyenda={<LeyendaDinero sobrePlan={haySegundaVuelta} />}
         mes={actual ? etiquetaConCobertura(actual.periodo) : undefined}
       />
 
@@ -347,7 +368,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
                       strokeDasharray="3 4"
                     />
                   ) : (
-                    <line x1="0" x2="24" y1="4" y2="4" stroke="var(--estado-ok-fuerte)" strokeWidth={3} />
+                    <line x1="0" x2="24" y1="4" y2="4" stroke="var(--sobre-plan)" strokeWidth={3} />
                   )}
                 </svg>
                 <span className="tabular-nums">
@@ -465,20 +486,25 @@ function Moneda({
           })}
         </g>
 
-        {/* El real, partida a partida, en el sentido de las agujas, todo en
-            el color de lo cerca que está el mes de su plan. */}
-        {arcos.map((arco) =>
+        {/* El real, partida a partida, en el sentido de las agujas: en el
+            anillo, en el color de lo cerca que está el mes de su plan; lo que
+            pasa del plan, en la segunda vuelta de fuera, en violeta. */}
+        {arcos.map((arco, i) =>
           arco.hasta - arco.desde > HUECO_GRADOS ? (
             <path
-              key={arco.pieza.id}
-              data-segmento={arco.pieza.indice}
-              d={trazoArco(R_ANILLO, arco.desde + HUECO_GRADOS / 2, arco.hasta - HUECO_GRADOS / 2)}
+              key={`${arco.pieza.id}-${arco.vuelta}`}
+              data-segmento={i}
+              d={trazoArco(
+                arco.vuelta === 1 ? R_VUELTA : R_ANILLO,
+                arco.desde + HUECO_GRADOS / 2,
+                arco.hasta - HUECO_GRADOS / 2,
+              )}
               fill="none"
-              strokeWidth={GROSOR_ANILLO}
+              strokeWidth={arco.vuelta === 1 ? GROSOR_VUELTA : GROSOR_ANILLO}
               strokeLinecap="butt"
               className="transition-[opacity,stroke] duration-500"
               style={{
-                stroke: color,
+                stroke: arco.vuelta === 1 ? 'var(--sobre-plan)' : color,
                 opacity: resaltada !== null && resaltada !== arco.pieza.id ? 0.25 : undefined,
               }}
               onPointerEnter={() => onResaltar(arco.pieza.id)}
@@ -720,11 +746,12 @@ function Cumplimiento({ valor, fuerte = false }: { valor: number | null; fuerte?
 
 /**
  * Leyenda propia, con la forma de las marcas: el real es el anillo lleno y
- * el plan, el discontinuo del surco.
+ * el plan, el discontinuo del surco. Si el mes pasa del plan, también la
+ * segunda vuelta.
  */
-function LeyendaDinero() {
+function LeyendaDinero({ sobrePlan }: { sobrePlan: boolean }) {
   return (
-    <div className="flex items-center gap-4 text-xs">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
       <span className="flex items-center gap-2 text-foreground">
         {/* La muestra del real dice su escala: el anillo va del rojo al verde
             según lo cerca que esté del plan. */}
@@ -752,6 +779,16 @@ function LeyendaDinero() {
         </svg>
         Plan
       </span>
+      {sobrePlan && (
+        <span className="flex items-center gap-2 text-foreground">
+          <span
+            aria-hidden="true"
+            className="h-1 w-6 shrink-0 rounded-full"
+            style={{ backgroundColor: 'var(--sobre-plan)' }}
+          />
+          Sobre el plan
+        </span>
+      )}
     </div>
   )
 }
@@ -803,7 +840,7 @@ function construirEntrada(
   const inicioAnillo = 0.35
   let t = inicioAnillo
   segmentos.forEach((segmento) => {
-    const arco = arcos.find((a) => String(a.pieza.indice) === segmento.getAttribute('data-segmento'))
+    const arco = arcos[Number(segmento.getAttribute('data-segmento'))]
     const grados = arco ? arco.hasta - arco.desde : 0
     const duracion = Math.max(0.05, (grados / 360) * DURACION_ANILLO)
     linea.fromTo(

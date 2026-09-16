@@ -35,6 +35,8 @@ export interface EntradaCatalogo {
   clave?: string
   /** Columna B. Solo para las cuatro filas sin clave, cuyo texto es único. */
   etiqueta?: string
+  /** Una fila que solo traen algunos libros: si falta, no es una incidencia. */
+  opcional?: boolean
   indicador: Indicador
 }
 
@@ -69,6 +71,8 @@ interface DefEtapa {
   definicion: string
   /** Prefijo de las claves de desglose. Ausente si la etapa no se reparte. */
   prefijoCanal?: string
+  /** El desglose solo lo traen algunos libros del plan. */
+  desgloseOpcional?: boolean
 }
 
 const ETAPAS: DefEtapa[] = [
@@ -95,8 +99,12 @@ const ETAPAS: DefEtapa[] = [
     clave: 'Discoveries_FLECHA',
     nombre: 'Discoveries',
     etapa: 3,
+    // Los libros desde el de julio de 2026 (0726) la reparten por canal; los
+    // anteriores traen solo el total, que entonces se teclea.
+    prefijoCanal: 'Discoveries_FLECHA',
+    desgloseOpcional: true,
     definicion:
-      'Sesiones de diagnóstico con el cliente potencial. El plan no las reparte por canal: a esta altura del embudo el origen ya deja de seguirse.',
+      'Sesiones de diagnóstico con el cliente potencial. Sale de aplicar la tasa de cualificación sobre las llamadas iniciales.',
   },
   {
     id: 'propuestas',
@@ -270,6 +278,7 @@ function entradasDelEmbudo(): EntradaCatalogo[] {
       const clave = `${etapa.prefijoCanal}_${CLAVE_CANAL[canal]}`
       salida.push({
         clave,
+        ...(etapa.desgloseOpcional ? { opcional: true } : {}),
         indicador: {
           id: `${etapa.id}.${canal}`,
           nombre: NOMBRE_CANAL[canal],

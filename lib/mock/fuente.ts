@@ -18,7 +18,12 @@ import type { FuenteDatos, Indicador, Meta, Periodo, Real, TasaDelPlan } from '@
 import { INDICADORES, METAS, PERIODOS_MOCK, REALES } from '@/lib/mock/datos'
 import { construirTasas } from '@/lib/plan/tasas'
 
-/** Las hipótesis de la hoja «Variables» del libro de abril de 2026. */
+const IDS_DE_EJEMPLO = new Set(INDICADORES.map((i) => i.id))
+
+/**
+ * Las hipótesis de la hoja «Variables» del libro de abril de 2026. Como al
+ * leer el Excel, solo las que unen dos indicadores de los datos de ejemplo.
+ */
 const TASAS_DE_EJEMPLO = construirTasas(
   new Map([
     ['CVR_Llamada', 0.6],
@@ -34,7 +39,7 @@ const TASAS_DE_EJEMPLO = construirTasas(
     ['CVR_Apertura', 0.5],
     ['CVR_Newsletter', 0.02],
   ]),
-).tasas
+).tasas.filter((t) => IDS_DE_EJEMPLO.has(t.desde) && IDS_DE_EJEMPLO.has(t.hacia))
 
 /** Cede el turno una vez, sin temporizadores. Marca el punto asíncrono. */
 async function cederTurno(): Promise<void> {

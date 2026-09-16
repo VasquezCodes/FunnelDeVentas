@@ -94,6 +94,40 @@ export const estadoDeQuincenas = cache(async (): Promise<EstadoQuincenas> => {
   }
 })
 
+// ── Configuración: el enlace del plan ────────────────────────────────────
+
+/**
+ * La configuración de este entorno. Un documento por colección de
+ * quincenas, así local (`quincenas-dev`) y producción (`quincenas`) guardan
+ * cada uno su enlace y cambiar uno no toca el otro.
+ */
+function configuracion() {
+  return getFirestore(aplicacion())
+    .collection('configuracion')
+    .doc(process.env.FIRESTORE_COLECCION || 'quincenas')
+}
+
+/** El enlace del plan que se eligió desde la captura, o null si nunca se cambió. */
+export async function leerEnlaceGuardado(): Promise<{ url: string; version: string } | null> {
+  const documento = await configuracion().get()
+  const url = documento.get('urlPlan')
+  if (typeof url !== 'string' || url === '') return null
+  const version = documento.get('versionPlan')
+  return { url, version: typeof version === 'string' ? version : '0' }
+}
+
+/**
+ * Guarda el enlace del plan. La versión cambia en cada guardado, aunque el
+ * enlace sea el mismo: así volver a guardarlo relee el Excel sin esperar a
+ * que caduque la caché.
+ */
+export async function guardarEnlace(url: string): Promise<void> {
+  await configuracion().set(
+    { urlPlan: url, versionPlan: String(Date.now()), actualizadoEn: FieldValue.serverTimestamp() },
+    { merge: true },
+  )
+}
+
 /**
  * Reemplaza enteros los documentos de las quincenas indicadas, de un golpe:
  * o se guardan todas o ninguna. Reemplazar (y no fusionar) es lo que hace

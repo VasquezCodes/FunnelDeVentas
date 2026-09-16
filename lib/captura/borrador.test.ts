@@ -16,12 +16,26 @@ describe('aNumero', () => {
 })
 
 describe('aBorrador', () => {
-  it('pasa lo guardado a texto editable y deja fuera los totales calculados', () => {
-    const reales = [
-      { periodoId: '2026-09-Q1', indicadorId: 'eleads.publicidad', valor: 30, origen: 'manual' as const },
-      { periodoId: '2026-09-Q1', indicadorId: 'eleads', valor: 30, origen: 'manual' as const },
-    ]
-    expect(aBorrador(reales)).toEqual({ 'eleads.publicidad': '30' })
+  const real = (indicadorId: string, valor: number) => ({
+    periodoId: '2026-09-Q1',
+    indicadorId,
+    valor,
+    origen: 'manual' as const,
+  })
+
+  it('pasa lo guardado a texto editable, solo lo que se teclea en el plan', () => {
+    const reales = [real('eleads.publicidad', 30), real('eleads', 30), real('discoveries', 12)]
+    expect(aBorrador(reales, new Set(['eleads.publicidad', 'discoveries']))).toEqual({
+      'eleads.publicidad': '30',
+      discoveries: '12',
+    })
+  })
+
+  it('con Discoveries por canal, la cifra de Discoveries ya no es una casilla', () => {
+    const reales = [real('discoveries', 12), real('discoveries.publicidad', 7)]
+    expect(aBorrador(reales, new Set(['discoveries.publicidad']))).toEqual({
+      'discoveries.publicidad': '7',
+    })
   })
 })
 
