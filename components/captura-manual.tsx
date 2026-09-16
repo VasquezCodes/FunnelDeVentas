@@ -6,9 +6,10 @@
  *
  * Es la pantalla donde una persona se sienta con el informe de HighLevel
  * delante y teclea lo que de verdad pasó. Tiene que entenderse a simple
- * vista: una tabla por bloque, dos casillas por fila y, al lado, el total
- * del mes y su plan para comparar. Nada más. El juicio (semáforos,
- * cumplimiento, gráficos) vive en el tablero; aquí se escribe.
+ * vista: a la izquierda una tabla por bloque, dos casillas por fila y, al
+ * lado, el total del mes y su plan; a la derecha, fijo al bajar, un gráfico
+ * de barras sencillo del bloque que se está escribiendo, que dice al momento
+ * si va en plan o fuera de plan (`CapturaEnVivo`).
  *
  *  1. SE CAPTURA POR QUINCENA. Cada indicador tiene dos casillas, la 1ª y la
  *     2ª quincena, que se guardan por separado. El total del mes no se
@@ -43,6 +44,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   useTransition,
   type ReactNode,
@@ -50,11 +52,19 @@ import {
 import { ArrowsClockwiseIcon, CaretDownIcon, CheckIcon, WarningIcon } from '@phosphor-icons/react/ssr'
 import {
   BadgeCheck,
+  Building2,
   Coins,
+  FileText,
+  Handshake,
   Layers,
+  Link2,
+  Mail,
+  Megaphone,
   Percent,
   PhoneCall,
+  Radar,
   ScanSearch,
+  Sigma,
   Users,
   Wallet,
   type LucideIcon,
@@ -66,7 +76,7 @@ import { NOMBRE_CANAL } from '@/lib/tipos'
 import { formatearTasaConversion, formatearValor } from '@/lib/comparacion'
 import { tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
-import { BLOQUES, type BloqueCaptura } from '@/lib/captura/bloques'
+import { BLOQUES, BLOQUES_POR_CANAL, type BloqueCaptura } from '@/lib/captura/bloques'
 import { completarTotales } from '@/lib/captura/totales'
 import {
   PATRON_ENTRADA,
@@ -80,6 +90,7 @@ import type { ResultadoGuardado } from '@/app/captura/acciones'
 import { COLOR_FAMILIA } from '@/components/graficos/config'
 import { IconoEnPastilla } from '@/components/graficos/hoja'
 import { DialogoClave } from '@/components/dialogo-clave'
+import { CapturaEnVivo, type FilaEnVivo } from '@/components/captura-en-vivo'
 
 // ── Estructura ──────────────────────────────────────────────────────────
 
@@ -102,8 +113,32 @@ const APARIENCIA: Record<string, { Icono: LucideIcon; color: string }> = {
   ingresos: { Icono: Coins, color: COLOR_FAMILIA.dinero },
   captacion: { Icono: Wallet, color: COLOR_FAMILIA.captacion },
   insumos: { Icono: Layers, color: 'var(--muted-foreground)' },
+  // Por canal: el icono y el tono de cada canal en el tablero (Canales); los
+  // que el plan deja sin cifras, en gris.
+  'canal-publicidad': { Icono: Megaphone, color: 'var(--canal-1)' },
+  'canal-prospeccion': { Icono: Radar, color: 'var(--canal-2)' },
+  'canal-referidos': { Icono: Handshake, color: 'var(--canal-3)' },
+  'canal-afiliados': { Icono: Link2, color: 'var(--muted-foreground)' },
+  'canal-contenido': { Icono: FileText, color: 'var(--muted-foreground)' },
+  'canal-newsletter': { Icono: Mail, color: 'var(--muted-foreground)' },
+  'canal-interno': { Icono: Building2, color: 'var(--muted-foreground)' },
+  totales: { Icono: Sigma, color: COLOR_FAMILIA.embudo },
 }
 const APARIENCIA_NEUTRA = { Icono: Layers, color: 'var(--muted-foreground)' }
+
+/** Cómo se agrupan las casillas: por etapa (como el Excel) o por canal. */
+type Agrupacion = 'etapa' | 'canal'
+
+/** El último bloque de canal de la vista por canal: detrás van los totales. */
+const ULTIMO_CANAL = BLOQUES_POR_CANAL.filter((b) => b.canal).at(-1)?.id
+
+/** Los totales que se leen al final de la vista por canal, con su nombre. */
+const TOTALES_POR_CANAL: Array<{ id: string; nombre: string }> = [
+  { id: 'eleads', nombre: 'Engaged Leads' },
+  { id: 'llamadas', nombre: 'Llamadas iniciales' },
+  { id: 'ventas', nombre: 'Ventas FLECHA' },
+  { id: 'captacion-total', nombre: 'Gasto de captación' },
+]
 
 /** Una cifra, o nada si no hay dato: en esta tabla un hueco se lee mejor que un guion. */
 const cifra = (valor: number | null, unidad: Unidad) =>
@@ -171,19 +206,66 @@ export function CapturaManual({
   const prefijoId = useId()
 
   const esMes = periodoActivo.tipo === 'mes'
-  const quincenasAMostrar: Quincena[] = esMes
-    ? ['q1', 'q2']
-    : periodoActivo.quincena === 1
-      ? ['q1']
-      : ['q2']
+  /** En la vista de quincena, la que se mira. */
+  const quincenaVisible: Quincena = periodoActivo.quincena === 2 ? 'q2' : 'q1'
+  const quincenasAMostrar: Quincena[] = esMes ? ['q1', 'q2'] : [quincenaVisible]
 
+  /*
+   * En quincena la tabla se normaliza a la quincena: no hay total del mes y
+   * el plan es el de esa quincena (el del mes entre dos, como lo reparte
+   * `lib/plan/quincenas.ts`; las tasas no se parten).
+   */
   const columnasAMostrar = esMes
     ? ['1ª quincena', '2ª quincena', 'Total mes', 'Plan mes']
-    : [periodoActivo.quincena === 1 ? '1ª quincena' : '2ª quincena', 'Total mes', 'Plan mes']
+    : [quincenaVisible === 'q1' ? '1ª quincena' : '2ª quincena', 'Plan quincena']
 
   const claseRejilla = esMes
     ? 'grid grid-cols-[minmax(9rem,1fr)_8rem_8rem_7rem_7rem] items-center gap-x-4'
-    : 'grid grid-cols-[minmax(9rem,1fr)_8rem_7rem_7rem] items-center gap-x-4'
+    : 'grid grid-cols-[minmax(9rem,1fr)_8rem_7rem] items-center gap-x-4'
+
+  const [agrupacion, setAgrupacion] = useState<Agrupacion>('etapa')
+
+  /**
+   * El bloque que enseña el panel de la derecha: el último en el que se puso
+   * el foco o, al hacer scroll, el que cruza la franja alta de la ventana.
+   * Sin ninguno todavía, el primero.
+   */
+  const refTabla = useRef<HTMLDivElement>(null)
+  const [bloqueActivo, setBloqueActivo] = useState<string | null>(null)
+  useEffect(() => {
+    let marco = 0
+    const alDesplazar = () => {
+      cancelAnimationFrame(marco)
+      marco = requestAnimationFrame(() => {
+        // Manda la casilla con el foco mientras siga a la vista: poner el foco
+        // hace scroll, y ese scroll no debe llevarse el panel al bloque de
+        // arriba. Si la casilla ya salió de la pantalla, manda el scroll.
+        const enfocado = document.activeElement
+        const conFoco = enfocado?.closest<HTMLElement>('[data-bloque]')
+        if (enfocado && conFoco && refTabla.current?.contains(conFoco)) {
+          const caja = enfocado.getBoundingClientRect()
+          if (caja.bottom > 0 && caja.top < window.innerHeight) {
+            setBloqueActivo(conFoco.dataset.bloque ?? null)
+            return
+          }
+        }
+        const linea = window.innerHeight * 0.35
+        let elegido: string | undefined
+        for (const nodo of refTabla.current?.querySelectorAll<HTMLElement>('[data-bloque]') ?? []) {
+          if (nodo.getBoundingClientRect().top <= linea) elegido = nodo.dataset.bloque
+        }
+        if (elegido) setBloqueActivo(elegido)
+      })
+    }
+    window.addEventListener('scroll', alDesplazar, { passive: true })
+    // Al cambiar de mes a quincena o de agrupación, la tabla se rehace bajo
+    // el mismo scroll: se vuelve a mirar qué bloque queda a la vista.
+    alDesplazar()
+    return () => {
+      window.removeEventListener('scroll', alDesplazar)
+      cancelAnimationFrame(marco)
+    }
+  }, [esMes, agrupacion])
 
   const [guardado, setGuardado] = useState(() => ({
     q1: aBorrador(realesQ1),
@@ -221,6 +303,24 @@ export function CapturaManual({
     }),
     [metasQ1, metasQ2],
   )
+
+  /**
+   * En la vista por canal, qué canales abren desplegados: los que tienen plan
+   * este mes o algo guardado. Los que el plan deja a cero y nadie ha
+   * capturado empiezan plegados. Se calcula sobre lo guardado y no sobre el
+   * borrador, para que un canal no se pliegue ni se abra mientras se teclea.
+   */
+  const abiertosPorCanal = useMemo(() => {
+    const abiertos = new Set<string>()
+    for (const bloque of BLOQUES_POR_CANAL) {
+      if (!bloque.canal) continue
+      const filas = bloque.grupos.flatMap((g) => g.filas)
+      const conPlan = filas.some((id) => (metaDe.q1.get(id) ?? 0) > 0 || (metaDe.q2.get(id) ?? 0) > 0)
+      const conDatos = filas.some((id) => aNumero(guardado.q1[id] ?? '') !== null || aNumero(guardado.q2[id] ?? '') !== null)
+      if (conPlan || conDatos) abiertos.add(bloque.id)
+    }
+    return abiertos
+  }, [metaDe, guardado])
 
   /** Las casillas de la pantalla, en orden: las filas de los bloques que existen. */
   const capturables = useMemo(
@@ -307,16 +407,32 @@ export function CapturaManual({
     })
   }
 
-  /** Las cifras de una fila: cada quincena, el total del mes y el plan del mes. */
+  /**
+   * Las cifras de una fila: cada quincena, el total del mes y el plan que se
+   * enseña (el del mes, o el de la quincena en la vista de quincena).
+   */
   function delMes(indicador: Indicador) {
     const q1 = conTotales.q1[indicador.id] ?? null
     const q2 = conTotales.q2[indicador.id] ?? null
     const metaQ1 = metaDe.q1.get(indicador.id) ?? null
     const metaQ2 = metaDe.q2.get(indicador.id) ?? null
     // Las metas de las quincenas suman exactamente el mes (lib/plan/quincenas.ts).
-    const plan =
+    const planMes =
       metaQ1 !== null && metaQ2 !== null ? Math.round((metaQ1 + metaQ2) * 100) / 100 : null
-    return { q1, q2, total: resumirMes(q1, q2, metaQ1, metaQ2, plan).real, plan }
+    const plan = esMes ? planMes : quincenaVisible === 'q1' ? metaQ1 : metaQ2
+    return { q1, q2, total: resumirMes(q1, q2, metaQ1, metaQ2, planMes).real, plan }
+  }
+
+  /**
+   * El nombre de una fila en la vista por canal: dentro del bloque de
+   * Publicidad, «Publicidad» no dice nada; dice la etapa («Engaged Leads») o
+   * que es su gasto.
+   */
+  function nombreDeFila(bloque: BloqueCaptura, indicador: Indicador) {
+    if (!bloque.canal) return indicador.nombre
+    if (indicador.desglosaA) return porId.get(indicador.desglosaA)?.nombre ?? indicador.nombre
+    if (indicador.grupo === 'captacion') return 'Gasto de captación'
+    return indicador.nombre
   }
 
   /** Los nombres de columna de un bloque, en la fila de su título. */
@@ -352,27 +468,30 @@ export function CapturaManual({
 
   function fila(bloque: BloqueCaptura, indicador: Indicador) {
     const { total, plan } = delMes(indicador)
+    const nombre = nombreDeFila(bloque, indicador)
     return (
       <div key={indicador.id} className={cn(claseRejilla, 'border-t py-1.5', HAIRLINE)}>
         <span title={indicador.definicion} className="truncate text-sm text-foreground">
-          {indicador.nombre}
+          {nombre}
         </span>
         {quincenasAMostrar.map((q) => (
           <Casilla
             key={q}
             id={`${prefijoId}-${q}-${indicador.id}`}
-            // El nombre visible es el del catálogo («Publicidad»); el que se
-            // lee en voz alta dice además de qué bloque es.
-            etiqueta={`${bloque.titulo}, ${indicador.nombre}, ${q === 'q1' ? '1ª' : '2ª'} quincena`}
+            // El nombre que se lee en voz alta dice además de qué bloque es:
+            // «Engaged Leads, Publicidad» o «Publicidad, Engaged Leads».
+            etiqueta={`${bloque.titulo}, ${nombre}, ${q === 'q1' ? '1ª' : '2ª'} quincena`}
             texto={borrador[q][indicador.id] ?? ''}
             unidad={indicador.unidad}
             cambiado={cambiado(q, indicador.id)}
             onEscribir={(texto) => escribir(q, indicador.id, texto)}
           />
         ))}
-        <span className="text-right text-sm font-medium text-foreground tabular-nums">
-          {cifra(total, indicador.unidad)}
-        </span>
+        {esMes && (
+          <span className="text-right text-sm font-medium text-foreground tabular-nums">
+            {cifra(total, indicador.unidad)}
+          </span>
+        )}
         <span className="text-right text-sm text-muted-foreground tabular-nums">
           {cifra(plan, indicador.unidad)}
         </span>
@@ -380,29 +499,78 @@ export function CapturaManual({
     )
   }
 
-  /** La fila del total: raya más marcada encima y cifras en negrita, sin casilla. */
-  function filaTotal(totalId: string) {
+  /**
+   * Una fila calculada, sin casilla. Como cierre de bloque («Total»), raya
+   * más marcada encima y en negrita; en el bloque de totales de la vista por
+   * canal, con el filete de las demás filas.
+   */
+  function filaTotal(totalId: string, nombre = 'Total', cierre = true) {
     const indicador = porId.get(totalId)
     if (!indicador) return null
     const { q1, q2, total, plan } = delMes(indicador)
+    const suma = { q1, q2 }
     return (
       <div
+        key={totalId}
         data-total
-        className={cn(claseRejilla, 'border-t py-2.5 text-sm tabular-nums')}
-        style={{ borderColor: 'var(--regla)' }}
+        className={cn(claseRejilla, 'border-t text-sm tabular-nums', cierre ? 'py-2.5' : 'py-2', !cierre && HAIRLINE)}
+        style={cierre ? { borderColor: 'var(--regla)' } : undefined}
       >
-        <span className="font-semibold text-foreground">Total</span>
+        <span className={cn('text-foreground', cierre ? 'font-semibold' : 'font-medium')}>{nombre}</span>
         {/* `pr-3`: el mismo relleno que la casilla, para acabar en la misma
             vertical que las cifras tecleadas encima. */}
-        {quincenasAMostrar.includes('q1') && (
-          <span className="pr-3 text-right font-semibold text-foreground">{cifra(q1, indicador.unidad)}</span>
+        {quincenasAMostrar.map((q) => (
+          <span key={q} className="pr-3 text-right font-semibold text-foreground">
+            {cifra(suma[q], indicador.unidad)}
+          </span>
+        ))}
+        {esMes && (
+          <span className="text-right font-semibold text-foreground">{cifra(total, indicador.unidad)}</span>
         )}
-        {quincenasAMostrar.includes('q2') && (
-          <span className="pr-3 text-right font-semibold text-foreground">{cifra(q2, indicador.unidad)}</span>
-        )}
-        <span className="text-right font-semibold text-foreground">{cifra(total, indicador.unidad)}</span>
         <span className="text-right font-medium text-muted-foreground">{cifra(plan, indicador.unidad)}</span>
       </div>
+    )
+  }
+
+  /** Una tasa en su banda, entre las filas que se teclean. */
+  function bandaTasa(tasa: TasaDelPlan, clase = 'mb-1') {
+    return (
+      <div
+        key={tasa.id}
+        data-tasa={tasa.id}
+        className={cn(claseRejilla, '-mx-3 rounded-lg px-3 py-1.5', clase, BANDA_TASA)}
+      >
+        {celdasTasa(tasa, <NombreTasa texto={tasa.nombre} />)}
+      </div>
+    )
+  }
+
+  /**
+   * Las filas de un canal, en la vista por canal: su materia prima con sus
+   * tasas; sus leads y, debajo, su conversión a llamada; sus llamadas, sus
+   * ventas y su gasto.
+   */
+  function filasDeCanal(bloque: BloqueCaptura) {
+    const canal = bloque.canal
+    if (!canal) return null
+    const indicadoresDe = (ids: readonly string[]) =>
+      ids.map((id) => porId.get(id)).filter((x): x is Indicador => !!x)
+    const todas = indicadoresDe(bloque.grupos.flatMap((g) => g.filas))
+    const previas = todas.filter((i) => i.grupo === 'insumo')
+    const resto = todas.filter((i) => i.grupo !== 'insumo')
+    const tasasPrevias = tasas.filter((t) => t.canal === canal && porId.get(t.desde)?.grupo === 'insumo')
+    const conversion = tasaEntre(tasas, `eleads.${canal}`, `llamadas.${canal}`)
+    return (
+      <>
+        {previas.map((indicador) => fila(bloque, indicador))}
+        {tasasPrevias.map((tasa) => bandaTasa(tasa))}
+        {resto.map((indicador) => (
+          <Fragment key={indicador.id}>
+            {fila(bloque, indicador)}
+            {indicador.desglosaA === 'eleads' && conversion && bandaTasa(conversion)}
+          </Fragment>
+        ))}
+      </>
     )
   }
 
@@ -424,18 +592,83 @@ export function CapturaManual({
             </p>
           )}
           {filas.map((indicador) => fila(bloque, indicador))}
-          {tasasDelGrupo.map((tasa) => (
-            <div
-              key={tasa.id}
-              data-tasa={tasa.id}
-              className={cn(claseRejilla, '-mx-3 mb-1 rounded-lg px-3 py-1.5', BANDA_TASA)}
-            >
-              {celdasTasa(tasa, <NombreTasa texto={tasa.nombre} />)}
-            </div>
-          ))}
+          {tasasDelGrupo.map((tasa) => bandaTasa(tasa))}
         </div>
       )
     })
+  }
+
+  /**
+   * Un bloque que se pliega: el título con cuántas casillas llevan cifra y
+   * los nombres de columna, que solo se ven al abrirlo. Plegar no descarta
+   * nada: sus casillas siguen en el borrador y en el contador de cambios.
+   */
+  function bloquePlegable(bloque: BloqueCaptura, idTitulo: string, contenido: ReactNode, abierto?: boolean) {
+    const filas = bloque.grupos.flatMap((g) => g.filas).filter((id) => porId.has(id))
+    if (filas.length === 0) return null
+    const capturados = filas.filter(
+      (id) => aNumero(borrador.q1[id] ?? '') !== null || aNumero(borrador.q2[id] ?? '') !== null,
+    ).length
+    return (
+      <details
+        key={bloque.id}
+        open={abierto}
+        data-bloque={bloque.id}
+        onFocus={() => setBloqueActivo(bloque.id)}
+        className="group/plegado pt-8"
+      >
+        <summary
+          className={cn(
+            claseRejilla,
+            'cursor-pointer list-none rounded-md pb-2 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden',
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            {titulo(bloque, idTitulo, `${capturados} de ${filas.length}`)}
+            <CaretDownIcon
+              weight="bold"
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-open/plegado:rotate-180"
+            />
+          </span>
+          {nombresDeColumna(true)}
+        </summary>
+        {contenido}
+      </details>
+    )
+  }
+
+  /**
+   * En la vista por canal, los totales de todos los canales, sin casilla:
+   * lo que se compara con el total del informe del CRM. Con la conversión a
+   * llamada y la cualificación globales entre sus filas.
+   */
+  function bloqueTotales() {
+    const idTitulo = `${prefijoId}-bloque-totales`
+    const conversion = tasaEntre(tasas, 'eleads', 'llamadas')
+    const cualificacion = tasaEntre(tasas, 'llamadas', 'discoveries')
+    const pseudo: BloqueCaptura = { id: 'totales', titulo: 'Totales', grupos: [], total: null, plegado: false }
+    return (
+      <div
+        role="group"
+        aria-labelledby={idTitulo}
+        data-bloque="totales"
+        onFocus={() => setBloqueActivo('totales')}
+        className="pt-8"
+      >
+        <div className={cn(claseRejilla, 'pb-2')}>
+          {titulo(pseudo, idTitulo)}
+          {nombresDeColumna()}
+        </div>
+        {TOTALES_POR_CANAL.map(({ id, nombre }) => (
+          <Fragment key={id}>
+            {filaTotal(id, nombre, false)}
+            {id === 'eleads' && conversion && bandaTasa(conversion)}
+            {id === 'llamadas' && cualificacion && bandaTasa(cualificacion)}
+          </Fragment>
+        ))}
+      </div>
+    )
   }
 
   /** Lo real de un indicador en el mes, con la regla de siempre. */
@@ -447,8 +680,8 @@ export function CapturaManual({
 
   /**
    * Las celdas de una fila de tasa, en las columnas de la tabla: la tasa real
-   * de cada quincena visible, la del mes en «Total mes» y la del plan en
-   * «Plan mes».
+   * de cada quincena visible, la del mes en «Total mes» (solo en la vista de
+   * mes) y la del plan en la columna del plan. La tasa del plan no se parte.
    */
   function celdasTasa(tasa: TasaDelPlan, nombre: ReactNode) {
     const real = (q: Quincena) =>
@@ -457,13 +690,22 @@ export function CapturaManual({
       <>
         {nombre}
         {quincenasAMostrar.map((q) => (
-          <span key={q} className="pr-3 text-right text-sm text-muted-foreground tabular-nums">
+          <span
+            key={q}
+            className={cn(
+              'pr-3 text-right text-sm tabular-nums',
+              // En quincena es la única tasa real: se lee como la del mes.
+              esMes ? 'text-muted-foreground' : 'font-medium text-foreground',
+            )}
+          >
             {porcentaje(real(q))}
           </span>
         ))}
-        <span className="text-right text-sm font-medium text-foreground tabular-nums">
-          {porcentaje(tasaReal(realDelMes(tasa.desde), realDelMes(tasa.hacia)))}
-        </span>
+        {esMes && (
+          <span className="text-right text-sm font-medium text-foreground tabular-nums">
+            {porcentaje(tasaReal(realDelMes(tasa.desde), realDelMes(tasa.hacia)))}
+          </span>
+        )}
         <span className="text-right text-sm text-muted-foreground tabular-nums">
           {porcentaje(tasa.plan)}
         </span>
@@ -553,152 +795,264 @@ export function CapturaManual({
     })
   }
 
+  /** Real y plan de una fila para el panel: el mes (a la fecha) o la quincena que se mira. */
+  function lecturaEnVivo(id: string): { real: number | null; plan: number | null } {
+    const q1 = conTotales.q1[id] ?? null
+    const q2 = conTotales.q2[id] ?? null
+    const m1 = metaDe.q1.get(id) ?? null
+    const m2 = metaDe.q2.get(id) ?? null
+    if (!esMes) return quincenaVisible === 'q1' ? { real: q1, plan: m1 } : { real: q2, plan: m2 }
+    // Un mes a medias se compara con el plan de lo que ya pasó, como el tablero.
+    const planMes = m1 !== null && m2 !== null ? Math.round((m1 + m2) * 100) / 100 : null
+    const { real, meta } = resumirMes(q1, q2, m1, m2, planMes)
+    return { real, plan: meta }
+  }
+
+  function filaEnVivo(indicador: Indicador, nombre: string): FilaEnVivo {
+    return {
+      id: indicador.id,
+      nombre,
+      unidad: indicador.unidad,
+      direccion: indicador.direccion,
+      ...lecturaEnVivo(indicador.id),
+    }
+  }
+
+  /** Lo que enseña el panel de la derecha para el bloque activo. */
+  function panelEnVivo() {
+    const bloques = agrupacion === 'canal' ? BLOQUES_POR_CANAL : BLOQUES
+    const periodo = esMes ? mes.etiqueta : periodoActivo.etiqueta
+
+    if (agrupacion === 'canal' && bloqueActivo === 'totales') {
+      const { Icono, color } = APARIENCIA.totales
+      const filas = TOTALES_POR_CANAL.flatMap(({ id, nombre }) => {
+        const indicador = porId.get(id)
+        return indicador ? [filaEnVivo(indicador, nombre)] : []
+      })
+      return <CapturaEnVivo titulo="Totales" Icono={Icono} color={color} periodo={periodo} total={null} filas={filas} />
+    }
+
+    const bloque = bloques.find((b) => b.id === bloqueActivo) ?? bloques[0]
+    if (!bloque) return null
+    const { Icono, color } = APARIENCIA[bloque.id] ?? APARIENCIA_NEUTRA
+    const filas = bloque.grupos
+      .flatMap((g) => g.filas)
+      .map((id) => porId.get(id))
+      .filter((x): x is Indicador => !!x)
+      .map((indicador) => {
+        // En las variables previas por etapa, dos canales tienen «Contactos
+        // reactivados»: el canal va entre paréntesis.
+        const nombre =
+          !bloque.canal && indicador.grupo === 'insumo' && indicador.canal
+            ? `${indicador.nombre} (${NOMBRE_CANAL[indicador.canal]})`
+            : nombreDeFila(bloque, indicador)
+        return filaEnVivo(indicador, nombre)
+      })
+    const indicadorTotal = bloque.total ? porId.get(bloque.total) : undefined
+    return (
+      <CapturaEnVivo
+        titulo={bloque.titulo}
+        Icono={Icono}
+        color={color}
+        periodo={periodo}
+        total={indicadorTotal ? filaEnVivo(indicadorTotal, 'Total') : null}
+        filas={filas}
+      />
+    )
+  }
+
   return (
-    <section className="bandeja aparecer mx-auto max-w-4xl">
-      <div className="nucleo">
-        {/* ── Cabecera ─────────────────────────────────────────────── */}
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-6 pt-6">
-          <div>
-            <h2 className="font-display text-3xl leading-none tracking-tight text-foreground">
-              {mes.etiqueta}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">Escribe lo que pasó en cada quincena.</p>
+    <div className="aparecer mx-auto grid max-w-7xl grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <section className="bandeja min-w-0">
+        <div className="nucleo">
+          {/* ── Cabecera ─────────────────────────────────────────────── */}
+          <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-6 pt-6">
+            <div>
+              <h2 className="font-display text-3xl leading-none tracking-tight text-foreground">
+                {mes.etiqueta}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">Escribe lo que pasó en cada quincena.</p>
+            </div>
+
+            <p
+              data-contador
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+              aria-live="polite"
+            >
+              {hayCambios ? (
+                <>
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-brand" />
+                  <span>
+                    <span className="font-medium text-foreground tabular-nums">{cambios}</span>{' '}
+                    {cambios === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CheckIcon weight="bold" aria-hidden="true" className="size-3.5 text-estado-ok" />
+                  Todo guardado
+                </>
+              )}
+            </p>
+          </header>
+
+          {/* Justo encima de la tabla que reordena. */}
+          <div className="px-6 pt-5">
+            <ConmutadorAgrupacion valor={agrupacion} onCambiar={setAgrupacion} />
           </div>
 
-          <p
-            data-contador
-            className="flex items-center gap-2 text-sm text-muted-foreground"
-            aria-live="polite"
-          >
-            {hayCambios ? (
-              <>
-                <span aria-hidden="true" className="size-1.5 rounded-full bg-brand" />
-                <span>
-                  <span className="font-medium text-foreground tabular-nums">{cambios}</span>{' '}
-                  {cambios === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}
-                </span>
-              </>
-            ) : (
-              <>
-                <CheckIcon weight="bold" aria-hidden="true" className="size-3.5 text-estado-ok" />
-                Todo guardado
-              </>
-            )}
-          </p>
-        </header>
+          {/* ── Bloques ── En pantalla estrecha scrollean dentro de su caja. */}
+          <div ref={refTabla} className="overflow-x-auto pb-4">
+            <div className={cn(ANCHO_TABLA, 'px-6')}>
+              {(agrupacion === 'canal' ? BLOQUES_POR_CANAL : BLOQUES).map((bloque) => {
+                const idTitulo = `${prefijoId}-bloque-${bloque.id}`
 
-        {/* ── Bloques ── En pantalla estrecha scrollean dentro de su caja. */}
-        <div className="overflow-x-auto pb-4">
-          <div className={cn(ANCHO_TABLA, 'px-6')}>
-            {BLOQUES.map((bloque) => {
-              const idTitulo = `${prefijoId}-bloque-${bloque.id}`
+                if (bloque.canal) {
+                  return (
+                    <Fragment key={bloque.id}>
+                      {bloquePlegable(bloque, idTitulo, filasDeCanal(bloque), abiertosPorCanal.has(bloque.id))}
+                      {/* Detrás del último canal, los totales de todos. */}
+                      {bloque.id === ULTIMO_CANAL && bloqueTotales()}
+                    </Fragment>
+                  )
+                }
 
-              if (bloque.plegado) {
-                // Plegar no descarta nada: sus casillas siguen en el borrador
-                // y en el contador de cambios.
-                const filas = bloque.grupos.flatMap((g) => g.filas).filter((id) => porId.has(id))
-                if (filas.length === 0) return null
-                const capturados = filas.filter(
-                  (id) => aNumero(borrador.q1[id] ?? '') !== null || aNumero(borrador.q2[id] ?? '') !== null,
-                ).length
+                if (bloque.plegado) return bloquePlegable(bloque, idTitulo, filasDe(bloque))
+
+                const hayFilas = bloque.grupos.some((g) => g.filas.some((id) => porId.has(id)))
+                if (!hayFilas) return null
                 return (
-                  <details key={bloque.id} className="group/plegado pt-8">
-                    <summary
-                      className={cn(
-                        claseRejilla,
-                        'cursor-pointer list-none rounded-md pb-2 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden',
-                      )}
+                  <Fragment key={bloque.id}>
+                    <div
+                      role="group"
+                      aria-labelledby={idTitulo}
+                      data-bloque={bloque.id}
+                      onFocus={() => setBloqueActivo(bloque.id)}
+                      className="pt-8"
                     >
-                      <span className="flex min-w-0 items-center gap-2">
-                        {titulo(bloque, idTitulo, `${capturados} de ${filas.length}`)}
-                        <CaretDownIcon
-                          weight="bold"
-                          aria-hidden="true"
-                          className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-open/plegado:rotate-180"
-                        />
-                      </span>
-                      {nombresDeColumna(true)}
-                    </summary>
-                    {filasDe(bloque)}
-                  </details>
-                )
-              }
-
-              const hayFilas = bloque.grupos.some((g) => g.filas.some((id) => porId.has(id)))
-              if (!hayFilas) return null
-              return (
-                <Fragment key={bloque.id}>
-                  <div role="group" aria-labelledby={idTitulo} className="pt-8">
-                    <div className={cn(claseRejilla, 'pb-2')}>
-                      {titulo(bloque, idTitulo)}
-                      {nombresDeColumna()}
+                      <div className={cn(claseRejilla, 'pb-2')}>
+                        {titulo(bloque, idTitulo)}
+                        {nombresDeColumna()}
+                      </div>
+                      {filasDe(bloque)}
+                      {bloque.total && filaTotal(bloque.total)}
                     </div>
-                    {filasDe(bloque)}
-                    {bloque.total && filaTotal(bloque.total)}
-                  </div>
-                  {tasasTras(bloque.id)}
-                </Fragment>
-              )
-            })}
+                    {tasasTras(bloque.id)}
+                  </Fragment>
+                )
+              })}
+            </div>
           </div>
+
+          {/* ── Pie ── Con cambios pendientes se pega al borde de abajo de la
+              ventana: guardar queda a mano esté donde esté la fila escrita. */}
+          <footer
+            className={cn(
+              'z-10 flex flex-wrap items-center justify-between gap-4 rounded-b-[0.9375rem] border-t px-6 py-4',
+              'bg-[color-mix(in_oklab,var(--card)_94%,transparent)] backdrop-blur-md',
+              hayCambios && 'sticky bottom-0 shadow-[0_-12px_28px_-20px_rgba(29,29,27,0.35)]',
+              HAIRLINE,
+            )}
+          >
+            <div className="max-w-md space-y-1.5">
+              {bloqueo && (
+                <p role="status" className="flex items-start gap-2 text-xs text-estado-alerta">
+                  <WarningIcon weight="duotone" aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                  <span>{bloqueo}</span>
+                </p>
+              )}
+              <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <ArrowsClockwiseIcon
+                  weight="duotone"
+                  aria-hidden="true"
+                  className="mt-px size-3.5 shrink-0 text-brand"
+                />
+                <span>En la fase 2 estas cifras llegarán solas del CRM.</span>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={!hayCambios || bloqueo !== null}
+              onClick={() => {
+                setErrorClave(null)
+                setPidiendoClave(true)
+              }}
+              className="group/guardar relative inline-flex h-11 shrink-0 items-center rounded-full bg-brand pr-12 pl-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-[transform,background-color,opacity] duration-300 ease-(--ease-fluid) outline-none hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Guardar cambios
+              <span
+                aria-hidden="true"
+                className="absolute right-2 grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/15 transition-transform duration-300 ease-(--ease-fluid) group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
+              >
+                <CheckIcon weight="bold" className="size-3.5" />
+              </span>
+            </button>
+          </footer>
         </div>
 
-        {/* ── Pie ── Con cambios pendientes se pega al borde de abajo de la
-            ventana: guardar queda a mano esté donde esté la fila escrita. */}
-        <footer
-          className={cn(
-            'z-10 flex flex-wrap items-center justify-between gap-4 rounded-b-[0.9375rem] border-t px-6 py-4',
-            'bg-[color-mix(in_oklab,var(--card)_94%,transparent)] backdrop-blur-md',
-            hayCambios && 'sticky bottom-0 shadow-[0_-12px_28px_-20px_rgba(29,29,27,0.35)]',
-            HAIRLINE,
-          )}
-        >
-          <div className="max-w-md space-y-1.5">
-            {bloqueo && (
-              <p role="status" className="flex items-start gap-2 text-xs text-estado-alerta">
-                <WarningIcon weight="duotone" aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-                <span>{bloqueo}</span>
-              </p>
-            )}
-            <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-              <ArrowsClockwiseIcon
-                weight="duotone"
-                aria-hidden="true"
-                className="mt-px size-3.5 shrink-0 text-brand"
-              />
-              <span>En la fase 2 estas cifras llegarán solas del CRM.</span>
-            </p>
-          </div>
+        <DialogoClave
+          abierto={pidiendoClave}
+          guardando={guardando}
+          error={errorClave}
+          cambios={cambios}
+          onConfirmar={confirmar}
+          onCancelar={() => setPidiendoClave(false)}
+        />
+      </section>
 
+      {/* El panel en vivo: fijo bajo la barra mientras se baja por la tabla.
+          En pantallas estrechas no cabe al lado y no se enseña. */}
+      <div className="sticky top-27 hidden lg:block">{panelEnVivo()}</div>
+    </div>
+  )
+}
+
+/**
+ * Por etapa o por canal: el mismo dibujo que Mes/Quincena de la barra. Solo
+ * cambia cómo se agrupan las casillas; lo escrito no se toca.
+ */
+function ConmutadorAgrupacion({
+  valor,
+  onCambiar,
+}: {
+  valor: Agrupacion
+  onCambiar: (valor: Agrupacion) => void
+}) {
+  const opciones: Array<{ id: Agrupacion; etiqueta: string }> = [
+    { id: 'etapa', etiqueta: 'Por etapa' },
+    { id: 'canal', etiqueta: 'Por canal' },
+  ]
+  return (
+    <div
+      role="group"
+      aria-label="Agrupar las casillas"
+      className="flex w-fit items-center gap-0.5 rounded-full p-1"
+      style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
+    >
+      {opciones.map((opcion) => {
+        const activa = opcion.id === valor
+        return (
           <button
+            key={opcion.id}
             type="button"
-            disabled={!hayCambios || bloqueo !== null}
-            onClick={() => {
-              setErrorClave(null)
-              setPidiendoClave(true)
-            }}
-            className="group/guardar relative inline-flex h-11 shrink-0 items-center rounded-full bg-brand pr-12 pl-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-[transform,background-color,opacity] duration-300 ease-(--ease-fluid) outline-none hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-pressed={activa}
+            onClick={() => onCambiar(opcion.id)}
+            className={cn(
+              'h-7 rounded-full px-3.5 text-[0.8125rem] font-medium',
+              'transition-[background-color,color,box-shadow] duration-200',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+              activa
+                ? 'bg-background text-foreground shadow-(--sombra-tray)'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            style={{ transitionTimingFunction: 'var(--ease-fluid)' }}
           >
-            Guardar cambios
-            <span
-              aria-hidden="true"
-              className="absolute right-2 grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/15 transition-transform duration-300 ease-(--ease-fluid) group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
-            >
-              <CheckIcon weight="bold" className="size-3.5" />
-            </span>
+            {opcion.etiqueta}
           </button>
-        </footer>
-      </div>
-
-      <DialogoClave
-        abierto={pidiendoClave}
-        guardando={guardando}
-        error={errorClave}
-        cambios={cambios}
-        onConfirmar={confirmar}
-        onCancelar={() => setPidiendoClave(false)}
-      />
-    </section>
+        )
+      })}
+    </div>
   )
 }
 

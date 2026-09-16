@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { BLOQUES } from '@/lib/captura/bloques'
+import { BLOQUES, BLOQUES_POR_CANAL } from '@/lib/captura/bloques'
 import { INDICADORES_DEL_PLAN, POR_ID } from '@/lib/plan/catalogo'
 import { SUMANDOS, TOTALES_CALCULADOS } from '@/lib/plan/sumas'
 import { NOMBRE_CANAL } from '@/lib/tipos'
@@ -60,5 +60,41 @@ describe('BLOQUES', () => {
         expect(canal && NOMBRE_CANAL[canal]).toBe(grupo.titulo)
       }
     }
+  })
+})
+
+describe('BLOQUES_POR_CANAL', () => {
+  const filasPorCanal = BLOQUES_POR_CANAL.flatMap(filasDe)
+
+  it('tiene exactamente las mismas casillas que la vista por etapa, cada una una vez', () => {
+    expect(filasPorCanal).toHaveLength(new Set(filasPorCanal).size)
+    expect([...filasPorCanal].sort()).toEqual(BLOQUES.flatMap(filasDe).sort())
+  })
+
+  it('un bloque por canal, en el orden del catálogo, solo con filas de su canal', () => {
+    const deCanal = BLOQUES_POR_CANAL.filter((b) => b.canal)
+    expect(deCanal.map((b) => b.titulo)).toEqual(Object.values(NOMBRE_CANAL))
+    for (const bloque of deCanal) {
+      for (const id of filasDe(bloque)) expect(POR_ID.get(id)?.canal).toBe(bloque.canal)
+    }
+  })
+
+  it('dentro de un canal, de la materia prima a la venta y al final su gasto', () => {
+    const publicidad = BLOQUES_POR_CANAL.find((b) => b.canal === 'publicidad')!
+    expect(filasDe(publicidad)).toEqual([
+      'publicidad-impresiones',
+      'publicidad-clicks',
+      'publicidad-inversion',
+      'eleads.publicidad',
+      'llamadas.publicidad',
+      'ventas.publicidad',
+      'captacion.publicidad',
+    ])
+  })
+
+  it('lo que no es de ningún canal va detrás, y sin totales tecleables', () => {
+    const sinCanal = BLOQUES_POR_CANAL.filter((b) => !b.canal)
+    expect(sinCanal.map((b) => b.id)).toEqual(['discoveries-propuestas', 'ingresos'])
+    for (const total of TOTALES_CALCULADOS) expect(filasPorCanal).not.toContain(total)
   })
 })

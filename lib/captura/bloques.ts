@@ -31,6 +31,8 @@ export interface BloqueCaptura {
   total: string | null
   /** Cerrado al abrir la pantalla. */
   plegado: boolean
+  /** En la vista por canal, el canal del bloque. */
+  canal?: Canal
 }
 
 /** Un bloque de un solo grupo, sin subtítulo. */
@@ -91,4 +93,39 @@ export const BLOQUES: readonly BloqueCaptura[] = [
     total: null,
     plegado: true,
   },
+]
+
+// ── Por canal ────────────────────────────────────────────────────────────
+
+const CANALES_DEL_CATALOGO: Canal[] = [
+  ...new Set(INDICADORES_DEL_PLAN.flatMap((i) => (i.canal ? [i.canal] : []))),
+]
+const IDS_DEL_PLAN = new Set(INDICADORES_DEL_PLAN.map((i) => i.id))
+
+/**
+ * La misma captura agrupada por canal, para quien tiene delante el informe
+ * de un canal y no el de una etapa: un bloque por canal con todo lo suyo, en
+ * el orden en que avanza (su materia prima, sus leads, sus llamadas, sus
+ * ventas) y al final lo que gastó. Detrás, lo que no es de ningún canal:
+ * discoveries y propuestas, y los ingresos. Son las mismas casillas que la
+ * vista por etapa, una vez cada una; los totales siguen sin casilla.
+ */
+export const BLOQUES_POR_CANAL: readonly BloqueCaptura[] = [
+  ...CANALES_DEL_CATALOGO.map((canal): BloqueCaptura => {
+    const previas = INDICADORES_DEL_PLAN.filter((i) => i.grupo === 'insumo' && i.canal === canal).map(
+      (i) => i.id,
+    )
+    const embudo = [`eleads.${canal}`, `llamadas.${canal}`, `ventas.${canal}`, `captacion.${canal}`].filter(
+      (id) => IDS_DEL_PLAN.has(id),
+    )
+    return {
+      id: `canal-${canal}`,
+      titulo: NOMBRE_CANAL[canal],
+      grupos: [{ titulo: null, filas: [...previas, ...embudo] }],
+      total: null,
+      plegado: false,
+      canal,
+    }
+  }),
+  ...BLOQUES.filter((b) => b.id === 'discoveries-propuestas' || b.id === 'ingresos'),
 ]
