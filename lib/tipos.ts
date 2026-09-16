@@ -28,6 +28,11 @@ export interface Periodo {
   etiqueta: string
   /** 'mar 2026' · '1ª quinc. mar' — para ejes de gráficas. */
   etiquetaCorta: string
+  /**
+   * Solo en un mes a medias: qué quincena tiene datos. 'q1' ⇒ el mes se lee
+   * «hasta el 15». Lo pone la fuente de datos al leer los reales.
+   */
+  cobertura?: 'q1' | 'q2'
 }
 
 // ── Indicadores ─────────────────────────────────────────────────────────
@@ -176,6 +181,7 @@ export interface FuenteDatos {
   indicadores(): Promise<Indicador[]>
   /** Periodos con datos, del más reciente al más antiguo. */
   periodos(): Promise<Periodo[]>
+  /** Metas del plan. En un mes en curso, las de lo que ya pasó (ver lib/reales/mes.ts). */
   metas(periodoId: string): Promise<Meta[]>
   reales(periodoId: string): Promise<Real[]>
 }

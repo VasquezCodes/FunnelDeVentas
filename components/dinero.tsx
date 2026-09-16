@@ -63,7 +63,7 @@ import {
   formatearCumplimiento,
   formatearValor,
 } from '@/lib/comparacion'
-import { compararPeriodos } from '@/lib/periodos'
+import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
 import { cn } from '@/lib/utils'
 
 // ── Modelo ──────────────────────────────────────────────────────────────
@@ -276,7 +276,10 @@ export function Dinero({ serie, periodoId }: DineroProps) {
 
   return (
     <Hoja ref={refHoja}>
-      <CabeceraHoja leyenda={<LeyendaDinero />} mes={actual?.periodo.etiqueta} />
+      <CabeceraHoja
+        leyenda={<LeyendaDinero />}
+        mes={actual ? etiquetaConCobertura(actual.periodo) : undefined}
+      />
 
       {/* El velo: lo que la entrada oculta mientras monta su primer
           fotograma. Contenedor de consulta: la moneda va al lado del libro
@@ -307,9 +310,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
                 {lecturaTotal.relacion}
               </p>
               <Semaforo
-                estado={total.estado}
-                etiqueta={ETIQUETAS_ESTADO[total.estado]}
-                cumplimiento={total.cumplimiento}
+                estado={total.estado}                cumplimiento={total.cumplimiento}
                 tamano="sm"
                 className="mt-2.5"
               />

@@ -82,7 +82,7 @@ import {
   formatearCumplimiento,
   formatearValor,
 } from '@/lib/comparacion'
-import { compararPeriodos } from '@/lib/periodos'
+import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
 import type { Canal } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 
@@ -333,7 +333,7 @@ export function Canales({ serie, periodoId }: CanalesProps) {
     <Hoja ref={refHoja}>
       <CabeceraHoja
         leyenda={<LeyendaCanales colores={filas.map((f) => f.color)} />}
-        mes={actual?.periodo.etiqueta}
+        mes={actual ? etiquetaConCobertura(actual.periodo) : undefined}
       />
 
       {/* El velo: lo que la entrada oculta mientras monta su primer
@@ -591,9 +591,7 @@ function ValorBarra({
         </span>
       </p>
       <Semaforo
-        estado={punto.estado}
-        etiqueta={ETIQUETAS_ESTADO[punto.estado]}
-        cumplimiento={punto.cumplimiento}
+        estado={punto.estado}        cumplimiento={punto.cumplimiento}
         tamano="sm"
         className="mt-2"
       />
@@ -634,9 +632,7 @@ function CabeceraBarra({
         {lectura.apagada ? lectura.relacion : 'real'}
       </p>
       <Semaforo
-        estado={punto.estado}
-        etiqueta={ETIQUETAS_ESTADO[punto.estado]}
-        cumplimiento={punto.cumplimiento}
+        estado={punto.estado}        cumplimiento={punto.cumplimiento}
         tamano="sm"
         className="self-center"
       />
@@ -839,9 +835,7 @@ function CeldaCanal({
         <div className="flex items-center justify-between gap-3">
           {titulo}
           <Semaforo
-            estado={punto.estado}
-            etiqueta={ETIQUETAS_ESTADO[punto.estado]}
-            cumplimiento={punto.cumplimiento}
+            estado={punto.estado}            cumplimiento={punto.cumplimiento}
             tamano="sm"
           />
         </div>

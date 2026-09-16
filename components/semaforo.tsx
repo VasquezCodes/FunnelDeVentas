@@ -14,13 +14,22 @@
  * con la forma del estado, la palabra en su color y la cifra en tinta. Sin
  * fondo, sin borde y sin separador: se lee en línea con el texto que anota.
  *
+ * ── Una sola voz ─────────────────────────────────────────────────────────
+ * Las palabras son las de `ETIQUETAS_ESTADO` ('@/lib/comparacion'): En
+ * plan, Al límite, Fuera de plan y Sin dato, en el tablero y en la captura.
+ * Hablan de *plan*, no de calidad: el tablero compara contra un plan de
+ * negocio, y «fuera de plan» describe un hecho mientras que «crítico»
+ * emitiría un juicio que el dato solo no sostiene. Hubo un segundo juego en
+ * los gráficos —«En objetivo», «En riesgo», «Crítico»—; al unificar, el
+ * usuario prefirió este. Por eso el semáforo no acepta una palabra propia.
+ *
  * No lleva 'use client': no tiene estado ni escucha eventos, así que se
  * renderiza en el servidor y no añade un gramo de JavaScript al cliente.
  */
 
 import { cn } from 'cn'
 
-import { formatearCumplimiento } from '@/lib/comparacion'
+import { ETIQUETAS_ESTADO, formatearCumplimiento } from '@/lib/comparacion'
 import type { Estado } from '@/lib/tipos'
 
 // ── Tokens ──────────────────────────────────────────────────────────────
@@ -75,11 +84,11 @@ export function varEstadoSuave(estado: Estado): string {
   return `var(${TOKEN_SUAVE[estado]})`
 }
 
-// ── Marca y texto ───────────────────────────────────────────────────────
+// ── Marca ───────────────────────────────────────────────────────────────
 
 /**
- * Cada estado con su silueta, maciza y pequeña: círculo en objetivo,
- * triángulo en riesgo, cuadrado crítico y círculo hueco sin dato. Es la
+ * Cada estado con su silueta, maciza y pequeña: círculo en plan, triángulo
+ * al límite, cuadrado fuera de plan y círculo hueco sin dato. Es la
  * convención de los informes que marcan el rojo, el ámbar y el verde con
  * forma además de color: la forma sola ya los separa, sin color y sin texto.
  *
@@ -110,23 +119,6 @@ function Marca({ estado, lado }: { estado: Estado; lado: string }) {
   )
 }
 
-/**
- * Texto del semáforo. Habla de *plan*, no de calidad: el tablero compara
- * contra un plan de negocio, y «fuera de plan» describe un hecho mientras
- * que «malo» emitiría un juicio que el dato solo no sostiene.
- *
- * OJO: `ETIQUETAS_ESTADO` de '@/lib/comparacion' usa otro juego de palabras
- * ('En objetivo' / 'En riesgo' / 'Crítico'). Las de aquí son las de la
- * interfaz. Conviene unificarlas en un solo sitio cuando se decida cuál es
- * la voz definitiva.
- */
-export const ETIQUETAS_SEMAFORO: Record<Estado, string> = {
-  ok: 'En plan',
-  alerta: 'Al límite',
-  critico: 'Fuera de plan',
-  'sin-dato': 'Sin dato',
-}
-
 // ── Componente ──────────────────────────────────────────────────────────
 
 export interface SemaforoProps {
@@ -140,24 +132,10 @@ export interface SemaforoProps {
   cumplimiento?: number | null
   /** 'sm' para rejillas densas y tablas · 'md' para la tarjeta destacada. */
   tamano?: 'sm' | 'md'
-  /**
-   * Palabra que sustituye a la del semáforo. Existe para que las gráficas,
-   * que hablan con el vocabulario de `ETIQUETAS_ESTADO` mientras no se
-   * unifiquen las dos voces, reutilicen este mismo semáforo en vez de
-   * copiarlo.
-   */
-  etiqueta?: string
   className?: string
 }
 
-export function Semaforo({
-  estado,
-  cumplimiento = null,
-  tamano = 'sm',
-  etiqueta: etiquetaPropia,
-  className,
-}: SemaforoProps) {
-  const etiqueta = etiquetaPropia ?? ETIQUETAS_SEMAFORO[estado]
+export function Semaforo({ estado, cumplimiento = null, tamano = 'sm', className }: SemaforoProps) {
   const hayCumplimiento =
     cumplimiento !== null && cumplimiento !== undefined && Number.isFinite(cumplimiento)
   const pequeno = tamano === 'sm'
@@ -181,7 +159,7 @@ export function Semaforo({
         style={{ color: varEstado(estado) }}
       >
         <Marca estado={estado} lado={pequeno ? '0.4375rem' : '0.5rem'} />
-        {etiqueta}
+        {ETIQUETAS_ESTADO[estado]}
       </span>
 
       {hayCumplimiento && (

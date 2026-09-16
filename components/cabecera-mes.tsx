@@ -37,8 +37,8 @@
 import { useRef } from 'react'
 
 import type { Comparativa, Periodo } from '@/lib/tipos'
-import { ETIQUETAS_ESTADO, formatearValor } from '@/lib/comparacion'
-import { MESES_LARGOS, capitalizar } from '@/lib/periodos'
+import { formatearValor } from '@/lib/comparacion'
+import { MESES_LARGOS, capitalizar, marcaCobertura } from '@/lib/periodos'
 import { cn } from '@/lib/utils'
 import { Semaforo, varEstado } from '@/components/semaforo'
 import { lecturaDe, puntoDeComparativa } from '@/components/graficos/fichas'
@@ -229,7 +229,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
       <div aria-hidden="true" className="mt-6 flex w-full items-center sm:mt-7">
         <div
           data-firma
-          className="h-[2px] w-14 origin-left rounded-full"
+          className="h-0.5 w-14 origin-left rounded-full"
           style={{ backgroundColor: 'var(--brand)' }}
         />
         <div
@@ -265,7 +265,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               <span
                 key={periodo.id}
                 data-mes
-                className="font-display block text-[clamp(1.625rem,1.1rem+2.2vw,2.625rem)] leading-[0.92] font-semibold tracking-[-0.025em]"
+                className="font-display block text-[clamp(1.625rem,1.1rem+2.2vw,2.625rem)] leading-[0.92] font-semibold tracking-tight"
                 // SplitText avisa: `text-wrap: balance` interfiere con el
                 // reparto en líneas, así que aquí se desactiva.
                 style={{ textWrap: 'nowrap', fontKerning: 'none' }}
@@ -275,6 +275,13 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               <span className="text-base leading-none font-medium text-muted-foreground tabular-nums sm:text-lg">
                 {periodo.anio}
               </span>
+              {/* Un mes a medias se lee «a la fecha»: la marca lo dice para
+                  que nadie lo confunda con un mes cerrado. */}
+              {marcaCobertura(periodo) && (
+                <span className="text-sm leading-none text-muted-foreground sm:text-base">
+                  · {marcaCobertura(periodo)}
+                </span>
+              )}
             </dd>
           </div>
 
@@ -291,9 +298,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
                     icono y palabra. Las demás son cifras, no juicios. */}
                 {cifra.id === 'ingreso-total' && (
                   <Semaforo
-                    estado={cifra.estado}
-                    etiqueta={ETIQUETAS_ESTADO[cifra.estado]}
-                    cumplimiento={cifra.cumplimiento}
+                    estado={cifra.estado}                    cumplimiento={cifra.cumplimiento}
                     tamano="sm"
                   />
                 )}

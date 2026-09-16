@@ -85,6 +85,7 @@ import {
   type HerramientasEntrada,
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
+import { tramoEnCurso } from '@/components/graficos/tramo-en-curso'
 import { gsap } from '@/lib/animacion'
 import {
   ETIQUETAS_ESTADO,
@@ -92,7 +93,7 @@ import {
   formatearCumplimiento,
   formatearValor,
 } from '@/lib/comparacion'
-import { compararPeriodos } from '@/lib/periodos'
+import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
 import type { Estado, Indicador, Periodo, Unidad } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 
@@ -342,14 +343,17 @@ export function Tendencias({
     () => (rango === 'plan' ? datos : datos.slice(inicio, inicio + MESES_VENTANA)),
     [datos, rango, inicio],
   )
+  // Un mes a medias va punteado, como en las fichas.
+  const enCurso = visibles.findIndex((p) => p.periodo.cobertura !== undefined)
+  const dibujo = useMemo(() => tramoEnCurso(visibles, enCurso), [visibles, enCurso])
   const elegido = Math.max(0, indiceElegido - inicio)
   // Los meses con dato entre dos sin él: sin punto propio no se verían.
   const sueltos = useMemo(
     () => ({
-      real: indicesSueltos(visibles.map((p) => p.real)),
-      plan: indicesSueltos(visibles.map((p) => p.meta)),
+      real: indicesSueltos(dibujo.map((p) => p.real)),
+      plan: indicesSueltos(dibujo.map((p) => p.meta)),
     }),
-    [visibles],
+    [dibujo],
   )
 
   // El mes señalado se guarda con la vista a la que pertenece: al cambiar de
@@ -498,7 +502,7 @@ export function Tendencias({
       <TarjetaGrafico ref={refTarjeta}>
         <div data-cabecera-grafico className="flex flex-wrap items-center justify-between gap-3">
           {selector}
-          <Semaforo estado="sin-dato" etiqueta={ETIQUETAS_ESTADO['sin-dato']} tamano="md" />
+          <Semaforo estado="sin-dato" tamano="md" />
         </div>
         <div className="mt-6 flex flex-col items-center justify-center gap-2 px-2 py-10 text-center">
           <ChartLineIcon
@@ -544,9 +548,7 @@ export function Tendencias({
           <ConmutadorRango rango={rango} onCambiar={setRango} />
         </div>
         <Semaforo
-          estado={puntoMostrado?.estado ?? 'sin-dato'}
-          etiqueta={ETIQUETAS_ESTADO[puntoMostrado?.estado ?? 'sin-dato']}
-          cumplimiento={puntoMostrado?.cumplimiento ?? null}
+          estado={puntoMostrado?.estado ?? 'sin-dato'}          cumplimiento={puntoMostrado?.cumplimiento ?? null}
           tamano="md"
           className="mt-1"
         />
@@ -581,7 +583,7 @@ export function Tendencias({
       >
         <LeyendaPlanReal forma="lineas" />
         <p className="text-xs font-medium text-foreground tabular-nums">
-          {puntoMostrado?.periodo.etiqueta}
+          {puntoMostrado ? etiquetaConCobertura(puntoMostrado.periodo) : null}
         </p>
       </div>
 
@@ -610,7 +612,7 @@ export function Tendencias({
             style={{ height: altoTrazado + ALTO_EJE_X + MARGEN_SUPERIOR }}
           >
             <AreaChart
-              data={visibles}
+              data={dibujo}
               margin={{ top: MARGEN_SUPERIOR, right: margenDerecho, bottom: 0, left: 0 }}
               // El teclado lo lleva el contenedor, que recorre los meses.
               accessibilityLayer={false}
@@ -727,6 +729,38 @@ export function Tendencias({
                   )
                 }}
               />
+
+              {/* El tramo del mes en curso: punteado y con el punto hueco, como
+                  en las fichas. */}
+              {enCurso >= 0 && (
+                <Line
+                  type="monotone"
+                  dataKey="realEnCurso"
+                  stroke="var(--color-real)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeDasharray="0.1 5"
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  activeDot={false}
+                  dot={({ cx, cy, index }) =>
+                    index === enCurso && cx != null && cy != null ? (
+                      <circle
+                        key="punto-en-curso"
+                        data-punto-suelto
+                        cx={Number(cx)}
+                        cy={Number(cy)}
+                        r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
+                        fill="var(--card)"
+                        stroke="var(--color-real)"
+                        strokeWidth={2}
+                      />
+                    ) : (
+                      <g key={`sin-punto-${index}`} />
+                    )
+                  }
+                />
+              )}
 
               {/* El plan: discontinuo, fino y sin puntos salvo el del mes que
                   se lee. Va después del área para pasar por encima del velo. */}

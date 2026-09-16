@@ -14,9 +14,11 @@
  */
 
 import { FolderSimpleDashedIcon, KeyIcon, WarningIcon } from '@phosphor-icons/react/ssr'
+import { connection } from 'next/server'
 
 import type { Meta, Real } from '@/lib/tipos'
 import { fuenteExcel, procedenciaDelPlan } from '@/lib/plan/fuente'
+import { estadoDeQuincenas } from '@/lib/reales/almacen'
 import { Tablero } from '@/components/tablero'
 
 /**
@@ -37,10 +39,11 @@ type Carga =
 async function leerTodo() {
   const fuente = fuenteExcel
 
-  const [indicadores, periodos, procedencia] = await Promise.all([
+  const [indicadores, periodos, procedencia, reales] = await Promise.all([
     fuente.indicadores(),
     fuente.periodos(),
     procedenciaDelPlan(),
+    estadoDeQuincenas(),
   ])
 
   // El plan entero son unos pocos miles de números: se precarga todo y así
@@ -61,7 +64,14 @@ async function leerTodo() {
     realesPorPeriodo[c.id] = c.reales
   }
 
-  return { indicadores, periodos, metasPorPeriodo, realesPorPeriodo, procedencia }
+  return {
+    indicadores,
+    periodos,
+    metasPorPeriodo,
+    realesPorPeriodo,
+    procedencia,
+    errorReales: reales.error,
+  }
 }
 
 async function cargar(): Promise<Carga> {
@@ -73,11 +83,21 @@ async function cargar(): Promise<Carga> {
 }
 
 export default async function Pagina() {
+  // Cada petición se renderiza de nuevo: lo guardado en la captura tiene que
+  // verse al recargar, no cuando caduque una caché.
+  await connection()
+
+  // La fecha de hoy, según el servidor: sin ningún resultado guardado, el
+  // tablero abre en el periodo de hoy. Se calcula aquí y no en el navegador
+  // para que el servidor y el cliente pinten el mismo periodo.
+  const hoy = new Date().toISOString().slice(0, 10)
+
   const carga = await cargar()
 
   if (!carga.ok) return <NoSePudoLeerElPlan mensaje={carga.mensaje} />
 
-  const { indicadores, periodos, metasPorPeriodo, realesPorPeriodo, procedencia } = carga.datos
+  const { indicadores, periodos, metasPorPeriodo, realesPorPeriodo, procedencia, errorReales } =
+    carga.datos
 
   return (
     <Tablero
@@ -85,6 +105,8 @@ export default async function Pagina() {
       periodos={periodos}
       metasPorPeriodo={metasPorPeriodo}
       realesPorPeriodo={realesPorPeriodo}
+      errorReales={errorReales}
+      hoy={hoy}
       procedencia={{
         libro: procedencia.libro,
         modificadoEn: procedencia.modificadoEn,
@@ -103,7 +125,7 @@ export default async function Pagina() {
  */
 function NoSePudoLeerElPlan({ mensaje }: { mensaje: string }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-[46rem] flex-col justify-center px-6 py-16">
+    <main className="mx-auto flex min-h-screen max-w-184 flex-col justify-center px-6 py-16">
       <div className="bandeja">
         <div className="nucleo p-7">
           <div className="flex items-start gap-3">
@@ -124,7 +146,7 @@ function NoSePudoLeerElPlan({ mensaje }: { mensaje: string }) {
               </p>
 
               <p
-                className="cifra mt-4 rounded-lg px-3 py-2.5 text-xs leading-relaxed break-words"
+                className="cifra mt-4 rounded-lg px-3 py-2.5 text-xs leading-relaxed wrap-break-word"
                 style={{ background: 'color-mix(in oklab, var(--foreground) 4%, transparent)' }}
               >
                 {mensaje}

@@ -23,7 +23,8 @@
 - **Iconos:**
   - Lucide en los gráficos, dentro de `IconoEnPastilla` (`components/graficos/hoja.tsx`): trazo de 1,75 en el color de la entidad sobre una aguada del 14 % del mismo color, el duotono hecho a mano.
   - Phosphor sigue en el cromo: barra superior, raíl y estados vacíos.
-- **Semáforo (`components/semaforo.tsx`):** sin píldora. Una marca maciza con la forma del estado —círculo en objetivo, triángulo en riesgo, cuadrado crítico, círculo hueco sin dato—, la palabra en el color del estado y la cifra en tinta, tabular. Sin fondo, sin borde y sin separador. La píldora tintada con icono de Phosphor se rechazó por «demasiado IA». La forma sola separa los estados sin color; la palabra, sin forma.
+- **Semáforo (`components/semaforo.tsx`):** sin píldora. Una marca maciza con la forma del estado —círculo en plan, triángulo al límite, cuadrado fuera de plan, círculo hueco sin dato—, la palabra en el color del estado y la cifra en tinta, tabular. Sin fondo, sin borde y sin separador. La píldora tintada con icono de Phosphor se rechazó por «demasiado IA». La forma sola separa los estados sin color; la palabra, sin forma.
+  - **Una sola voz** en toda la aplicación, también en «Capturar datos»: En plan, Al límite, Fuera de plan y Sin dato (`ETIQUETAS_ESTADO`, en `lib/comparacion.ts`). Hablan de plan, no de calidad. Al unificar, el usuario las prefirió a «En objetivo / En riesgo / Crítico», que usaban los gráficos; el semáforo ya no acepta una palabra propia.
 
 ## Cabecera (`components/cabecera-mes.tsx`)
 
@@ -115,13 +116,14 @@
 - El mosaico de recipientes de Dinero (v4).
 - El detalle flotante de Canales (`DetalleCanal`).
 - La píldora del semáforo y sus iconos de Phosphor.
+- `ETIQUETAS_SEMAFORO` y la prop `etiqueta` del semáforo: queda una sola voz para los estados.
 - El gesto de arrastre del carrusel y su pista.
 - La prop `lectura` de la cabecera: su único uso era un texto para lectores de pantalla que ahora dice el semáforo del ingreso.
 
 ## Verificación (2026-09-15)
 
 - `tsc` y `eslint` limpios; la consola del navegador, sin errores ni avisos de hidratación.
-- Capturas a 1440, 875 y 400 px en claro y oscuro.
+- Capturas a 1440, 875 y 400 px en claro y a 1440 px en oscuro, más la vista «Capturar datos», que también usa el semáforo.
 - Scripts de interacción:
   - Una ficha del Embudo lee junio y las demás siguen en septiembre; con el teclado, en la segunda ficha, se llega a julio y se anuncia.
   - Arrastrar sobre las fichas selecciona texto y la sección no cambia.

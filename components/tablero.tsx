@@ -17,8 +17,7 @@
  * pasando. No es un orden alfabético ni estético.
  */
 
-import { useCallback, useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { useMemo, useState } from 'react'
 import {
   ChartLineIcon,
   CoinsIcon,
@@ -31,6 +30,7 @@ import type { Indicador, Meta, Periodo, Real, TipoPeriodo } from '@/lib/tipos'
 import { compararTodos } from '@/lib/comparacion'
 import { compararPeriodos } from '@/lib/periodos'
 import { filasDeCanal, canalMasDeteriorado } from '@/lib/canales'
+import { idsDeQuincenas } from '@/lib/reales/mes'
 
 import { Chasis, type Vista } from '@/components/chasis'
 import { SelectorPeriodo } from '@/components/selector-periodo'
@@ -42,6 +42,7 @@ import { Dinero } from '@/components/dinero'
 import { Tendencias } from '@/components/tendencias'
 import type { PuntoDeSerie } from '@/components/graficos/fichas'
 import { CapturaManual } from '@/components/captura-manual'
+import { guardarMes } from '@/app/captura/acciones'
 
 export interface DatosPrecargados {
   indicadores: Indicador[]
@@ -55,6 +56,10 @@ export interface DatosPrecargados {
     meses: number
     incidencias: string[]
   } | null
+  /** Por qué no se pudieron leer los resultados guardados, o null. */
+  errorReales?: string | null
+  /** La fecha de hoy (ISO), según el servidor. */
+  hoy?: string
 }
 
 /** Indicadores que tiene sentido graficar en la serie temporal. */
@@ -66,9 +71,13 @@ export function Tablero({
   metasPorPeriodo,
   realesPorPeriodo,
   procedencia = null,
+  errorReales = null,
+  hoy,
 }: DatosPrecargados) {
   const [vista, setVista] = useState<Vista>('tablero')
   const [tipo, setTipo] = useState<TipoPeriodo>('mes')
+  /** Casillas cambiadas y sin guardar en la captura. */
+  const [pendientes, setPendientes] = useState(0)
 
   const porTipo = useMemo(
     () => periodos.filter((p) => p.tipo === tipo).sort((a, b) => compararPeriodos(b, a)),
@@ -88,11 +97,16 @@ export function Tablero({
    * Se abre en el último periodo CON resultado, no en el último del plan.
    * El plan llega a diciembre de 2028 y solo unos pocos meses están
    * capturados: arrancar en el último sería abrir en una página en blanco.
+   *
+   * Sin ningún resultado —el primer día con Firebase, antes de capturar
+   * nada—, se abre en el periodo de hoy, que es el que alguien viene a
+   * capturar.
    */
   const periodoPorDefecto = useMemo(() => {
     const conReal = porTipo.find((p) => conDato.has(p.id))
-    return conReal?.id ?? porTipo[0]?.id ?? ''
-  }, [porTipo, conDato])
+    const deHoy = hoy ? porTipo.find((p) => p.inicio <= hoy && hoy <= p.fin) : undefined
+    return conReal?.id ?? deHoy?.id ?? porTipo[0]?.id ?? ''
+  }, [porTipo, conDato, hoy])
 
   const [periodoId, setPeriodoId] = useState<string>(periodoPorDefecto)
 
@@ -203,15 +217,26 @@ export function Tablero({
     () => graficables.find((i) => i.id === 'ingreso-total')?.id ?? graficables[0]?.id ?? '',
   )
 
-  const guardar = useCallback((valores: Real[]) => {
-    // Sin persistencia todavía, por decisión: esta fase trae el plan del
-    // Excel y rediseña la lectura. Al conectar el almacén, esta función pasa
-    // a ser una acción de servidor y nada más de este archivo cambia.
-    console.log('[captura] valores del periodo', valores)
-    toast.success('Periodo revisado', {
-      description: `${valores.length} indicadores. Todavía no se guardan: la persistencia llega en la siguiente fase.`,
-    })
-  }, [])
+  /**
+   * Con cambios sin guardar en la captura, cambiar de mes, de grano o de
+   * vista pregunta antes de perderlos: son hasta 104 casillas por mes.
+   */
+  const puedeSalir = () =>
+    pendientes === 0 ||
+    window.confirm(
+      `Hay ${pendientes} ${pendientes === 1 ? 'cambio' : 'cambios'} sin guardar. ¿Salir sin guardarlos?`,
+    )
+  const cambiarPeriodo = (id: string) => {
+    if (puedeSalir()) setPeriodoId(id)
+  }
+  const cambiarTipo = (t: TipoPeriodo) => {
+    if (puedeSalir()) setTipo(t)
+  }
+  const cambiarVista = (v: Vista) => {
+    if (v === vista || !puedeSalir()) return
+    setVista(v)
+    setPendientes(0)
+  }
 
   /**
    * ¿El plan trae quincenas?
@@ -233,9 +258,9 @@ export function Tablero({
     <SelectorPeriodo
       periodos={porTipo}
       actual={periodo}
-      onCambiar={setPeriodoId}
+      onCambiar={cambiarPeriodo}
       tipo={tipo}
-      onCambiarTipo={setTipo}
+      onCambiarTipo={cambiarTipo}
       conDato={conDato}
       hayVariosTipos={hayVariosTipos}
     />
@@ -243,7 +268,7 @@ export function Tablero({
 
   if (!periodo) {
     return (
-      <Chasis vista={vista} onCambiarVista={setVista}>
+      <Chasis vista={vista} onCambiarVista={cambiarVista}>
         <p className="text-muted-foreground">
           El plan no trajo ningún periodo. Revisa la conexión con el Excel.
         </p>
@@ -251,15 +276,37 @@ export function Tablero({
     )
   }
 
-  if (vista === 'captura') {
+  /**
+   * Se captura por mes. Si el tablero está en la vista Quincena, se abre el
+   * mes de esa quincena.
+   */
+  const mesCaptura =
+    periodo.tipo === 'mes'
+      ? periodo
+      : (periodos.find(
+          (p) => p.tipo === 'mes' && p.anio === periodo.anio && p.mes === periodo.mes,
+        ) ?? null)
+
+  if (vista === 'captura' && mesCaptura) {
+    const [idQ1, idQ2] = idsDeQuincenas(mesCaptura.id)
     return (
-      <Chasis vista={vista} onCambiarVista={setVista} controles={controles}>
+      <Chasis vista={vista} onCambiarVista={cambiarVista} controles={controles}>
         <CapturaManual
-          periodo={periodo}
+          mes={mesCaptura}
           indicadores={indicadores}
-          metas={metasPorPeriodo[periodo.id] ?? []}
-          realesIniciales={realesPorPeriodo[periodo.id] ?? []}
-          onGuardar={guardar}
+          metasQ1={metasPorPeriodo[idQ1] ?? []}
+          metasQ2={metasPorPeriodo[idQ2] ?? []}
+          realesQ1={realesPorPeriodo[idQ1] ?? []}
+          realesQ2={realesPorPeriodo[idQ2] ?? []}
+          // Guardar reemplaza las dos quincenas enteras: si no se pudo leer lo
+          // guardado, guardar ahora borraría lo que no se ha cargado.
+          bloqueo={
+            errorReales
+              ? 'No se puede guardar: los resultados guardados no se pudieron leer, y guardar ahora borraría lo que no se ha cargado.'
+              : null
+          }
+          onGuardar={(q1, q2, clave) => guardarMes({ mesId: mesCaptura.id, q1, q2, clave })}
+          onCambiosPendientes={setPendientes}
         />
       </Chasis>
     )
@@ -326,9 +373,10 @@ export function Tablero({
   ]
 
   return (
-    <Chasis vista={vista} onCambiarVista={setVista} controles={controles}>
+    <Chasis vista={vista} onCambiarVista={cambiarVista} controles={controles}>
       <div className="flex flex-col gap-8">
         <CabeceraMes periodo={periodo} comparativas={comparativas} />
+        {errorReales && <AvisoReales motivo={errorReales} />}
         <Carrusel paneles={paneles} />
         {procedencia && procedencia.incidencias.length > 0 && (
           <AvisoIncidencias incidencias={procedencia.incidencias} />
@@ -357,6 +405,25 @@ function AvisoIncidencias({ incidencias }: { incidencias: string[] }) {
         {incidencias.length} filas del catálogo no se encontraron en el Excel (
         {incidencias.slice(0, 4).join(', ')}
         {incidencias.length > 4 ? '…' : ''}). Puede que las hayan renombrado.
+      </span>
+    </p>
+  )
+}
+
+/**
+ * Los resultados guardados no se pudieron leer. Se dice, y el tablero enseña
+ * el plan sin reales: nunca se cae a datos de ejemplo.
+ */
+function AvisoReales({ motivo }: { motivo: string }) {
+  return (
+    <p
+      className="flex items-start gap-2 text-xs leading-relaxed"
+      style={{ color: 'var(--estado-alerta)' }}
+    >
+      <WarningIcon weight="duotone" aria-hidden="true" className="mt-[0.1rem] size-4 shrink-0" />
+      <span>
+        No se pudieron leer los resultados guardados ({motivo}). El tablero enseña el plan sin
+        reales.
       </span>
     </p>
   )

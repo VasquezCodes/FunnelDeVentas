@@ -4,18 +4,23 @@
  * Implementa el mismo contrato `FuenteDatos` que la fuente de ejemplo, así
  * que el tablero no sabe —ni tiene por qué saber— de dónde salen las cifras.
  *
- * El plan es real y viene de SharePoint. Los reales son de ejemplo mientras
- * la captura no persista; el día que lo haga, solo cambia `reales()`.
+ * El plan es real y viene de SharePoint. Los reales salen de Firestore
+ * (`lib/reales/almacen.ts`), quincena a quincena; el mes se calcula con la
+ * regla de `lib/reales/mes.ts`.
  */
 
 import 'server-only'
+
+import { cache } from 'react'
 
 import type { FuenteDatos, Indicador, Meta, Periodo, Real } from '@/lib/tipos'
 import { compararPeriodos } from '@/lib/periodos'
 import { cachearLecturaDelPlan, descargarLibro } from '@/lib/plan/graph'
 import { leerPlan, type PlanLeido } from '@/lib/plan/excel'
 import { conQuincenas } from '@/lib/plan/quincenas'
-import { realesDeEjemplo } from '@/lib/plan/reales-ejemplo'
+import { estadoDeQuincenas } from '@/lib/reales/almacen'
+import { completarQuincenas } from '@/lib/captura/totales'
+import { coberturaDelMes, idsDeQuincenas, metasDelMes, realesDelPeriodo } from '@/lib/reales/mes'
 
 /** Lo que se guarda en caché: el resultado de leer, nunca el binario. */
 interface PlanEnCache extends PlanLeido {
@@ -52,7 +57,25 @@ const leerDelOrigen = async (): Promise<PlanEnCache> => {
   }
 }
 
-const obtenerPlan = cachearLecturaDelPlan('plan-de-ventas', leerDelOrigen)
+/**
+ * El plan, leído una sola vez por petición.
+ *
+ * `unstable_cache` guarda el plan entre peticiones, pero cada llamada lo
+ * vuelve a deserializar entero, y la página lo pide unas doscientas veces
+ * (metas y reales de cada periodo). `cache` de React lo reduce a una lectura
+ * por petición: sin esto, pintar el tablero tras guardar tardaba segundos.
+ */
+const obtenerPlan = cache(cachearLecturaDelPlan('plan-de-ventas', leerDelOrigen))
+
+/**
+ * Las quincenas guardadas, con sus totales ya calculados, una vez por
+ * petición. En Firestore nunca hay totales (lib/captura/totales.ts): se
+ * completan aquí para que los reales, la meta a la fecha y la cobertura
+ * vean las mismas cifras.
+ */
+const quincenasCompletas = cache(async () =>
+  completarQuincenas((await estadoDeQuincenas()).quincenas),
+)
 
 /** Estado de la lectura, para que la interfaz pueda decir de dónde viene. */
 export interface ProcedenciaDelPlan {
@@ -83,20 +106,35 @@ export const fuenteExcel: FuenteDatos = {
     return (await obtenerPlan()).indicadores
   },
 
-  /** Del más reciente al más antiguo: es lo que espera el contrato. */
+  /**
+   * Del más reciente al más antiguo: es lo que espera el contrato. Los meses
+   * a medias llevan su cobertura, para que la interfaz los marque.
+   */
   async periodos(): Promise<Periodo[]> {
-    const plan = await obtenerPlan()
-    return plan.periodos.slice().sort((a, b) => compararPeriodos(b, a))
+    const [plan, quincenas] = await Promise.all([obtenerPlan(), quincenasCompletas()])
+    return plan.periodos
+      .map((p) => {
+        if (p.tipo !== 'mes') return p
+        const cobertura = coberturaDelMes(p.id, quincenas)
+        return cobertura ? { ...p, cobertura } : p
+      })
+      .sort((a, b) => compararPeriodos(b, a))
   },
 
+  /** En un mes en curso, la meta es la de lo que ya pasó. */
   async metas(periodoId: string): Promise<Meta[]> {
-    const plan = await obtenerPlan()
-    return plan.metas.filter((m) => m.periodoId === periodoId)
+    const [plan, quincenas] = await Promise.all([obtenerPlan(), quincenasCompletas()])
+    const delPeriodo = (id: string) => plan.metas.filter((m) => m.periodoId === id)
+    const metas = delPeriodo(periodoId)
+    const periodo = plan.periodos.find((p) => p.id === periodoId)
+    if (periodo?.tipo !== 'mes') return metas
+    const [idQ1, idQ2] = idsDeQuincenas(periodoId)
+    return metasDelMes(periodoId, metas, delPeriodo(idQ1), delPeriodo(idQ2), quincenas)
   },
 
   async reales(periodoId: string): Promise<Real[]> {
-    const plan = await obtenerPlan()
-    const metas = plan.metas.filter((m) => m.periodoId === periodoId)
-    return realesDeEjemplo(periodoId, metas)
+    const [plan, quincenas] = await Promise.all([obtenerPlan(), quincenasCompletas()])
+    const periodo = plan.periodos.find((p) => p.id === periodoId)
+    return periodo ? realesDelPeriodo(periodo, quincenas) : []
   },
 }

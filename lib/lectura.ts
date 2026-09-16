@@ -134,7 +134,7 @@ export function leer(
   } else if (reparto.alerta > 0) {
     detalle = `${reparto.alerta} ${reparto.alerta === 1 ? 'indicador está' : 'indicadores están'} al límite.`
   } else {
-    detalle = 'Todos los indicadores con dato están dentro de objetivo.'
+    detalle = 'Todos los indicadores con dato están en plan.'
   }
 
   return { titular, detalle, cumplimiento, tono, reparto }

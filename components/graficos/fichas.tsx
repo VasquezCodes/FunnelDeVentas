@@ -59,9 +59,16 @@ import {
   type HerramientasEntrada,
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
+import { tramoEnCurso } from '@/components/graficos/tramo-en-curso'
 import { gsap } from '@/lib/animacion'
 import { ETIQUETAS_ESTADO, SIN_DATO, calcularEstado } from '@/lib/comparacion'
-import { MESES_CORTOS, MESES_LARGOS, capitalizar, compararPeriodos } from '@/lib/periodos'
+import {
+  MESES_CORTOS,
+  MESES_LARGOS,
+  capitalizar,
+  compararPeriodos,
+  etiquetaConCobertura,
+} from '@/lib/periodos'
 import type { Comparativa, Direccion, Estado, Periodo } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 
@@ -306,7 +313,7 @@ export function RejillaFichas({
     <Hoja ref={refHoja}>
       <CabeceraHoja
         leyenda={<LeyendaPlanReal forma="lineas" />}
-        mes={ventana[elegido]?.etiqueta}
+        mes={ventana[elegido] ? etiquetaConCobertura(ventana[elegido]) : undefined}
         style={colorLeyenda ? ({ '--serie-real': colorLeyenda } as CSSProperties) : undefined}
       />
 
@@ -410,18 +417,25 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
     [ficha.color],
   )
 
+  // Un mes a medias (solo en meses, nunca en quincenas) va punteado: su real
+  // es «a la fecha» y, sin marca, la curva parecería hundirse.
+  const enCurso = ventana.findIndex((p) => p.cobertura !== undefined)
   const datos = useMemo(
     () =>
-      ventana.map((periodo, i) => ({
-        id: periodo.id,
-        mes: etiquetaMes(periodo),
-        plan: ficha.puntos[i]?.plan ?? null,
-        real: ficha.puntos[i]?.real ?? null,
-      })),
-    [ventana, ficha.puntos],
+      tramoEnCurso(
+        ventana.map((periodo, i) => ({
+          id: periodo.id,
+          mes: etiquetaMes(periodo),
+          plan: ficha.puntos[i]?.plan ?? null,
+          real: ficha.puntos[i]?.real ?? null,
+        })),
+        enCurso,
+      ),
+    [ventana, ficha.puntos, enCurso],
   )
   const n = datos.length
-  const tope = Math.max(0, ...datos.flatMap((d) => [d.plan ?? 0, d.real ?? 0])) || 1
+  const tope =
+    Math.max(0, ...datos.flatMap((d) => [d.plan ?? 0, d.real ?? 0, d.realEnCurso ?? 0])) || 1
   const sueltos = useMemo(
     () => ({
       real: indicesSueltos(datos.map((d) => d.real)),
@@ -475,9 +489,7 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
           <span className="truncate">{ficha.titulo}</span>
         </h3>
         <Semaforo
-          estado={punto.estado}
-          etiqueta={ETIQUETAS_ESTADO[punto.estado]}
-          cumplimiento={punto.cumplimiento}
+          estado={punto.estado}          cumplimiento={punto.cumplimiento}
           tamano="sm"
         />
       </div>
@@ -614,6 +626,39 @@ function CeldaFicha({ ficha, indiceFicha, ventana, elegido, clave }: CeldaFichaP
                 )
               }}
             />
+
+            {/* El tramo del mes en curso: punteado y con el punto hueco. El
+                punto lleva data-punto-suelto para aparecer al final de la
+                entrada, con los demás sueltos. */}
+            {enCurso >= 0 && (
+              <Line
+                type="monotone"
+                dataKey="realEnCurso"
+                stroke="var(--color-real)"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray="0.1 5"
+                connectNulls={false}
+                isAnimationActive={false}
+                activeDot={false}
+                dot={({ cx, cy, index }) =>
+                  index === enCurso && cx != null && cy != null ? (
+                    <circle
+                      key="punto-en-curso"
+                      data-punto-suelto
+                      cx={Number(cx)}
+                      cy={Number(cy)}
+                      r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
+                      fill="var(--card)"
+                      stroke="var(--color-real)"
+                      strokeWidth={2}
+                    />
+                  ) : (
+                    <g key={`sin-punto-${index}`} />
+                  )
+                }
+              />
+            )}
 
             {/* El plan: discontinuo y fino. Va después del área para pasar
                 por encima del velo. */}

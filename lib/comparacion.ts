@@ -36,11 +36,16 @@ const SIGNO_MENOS = '−'
 /** Espacio duro. En español el símbolo % va separado de la cifra. */
 const ESPACIO_DURO = ' '
 
-/** Etiquetas del semáforo. El color nunca viaja solo: color + icono + texto. */
+/**
+ * Las palabras de cada estado: una sola voz para el semáforo, las tablas y
+ * los lectores de pantalla. El color nunca viaja solo: color + forma + texto.
+ * Hablan de plan, no de calidad: «fuera de plan» es un hecho; «crítico»
+ * sería un juicio que el dato solo no sostiene.
+ */
 export const ETIQUETAS_ESTADO: Record<Estado, string> = {
-  ok: 'En objetivo',
-  alerta: 'En riesgo',
-  critico: 'Crítico',
+  ok: 'En plan',
+  alerta: 'Al límite',
+  critico: 'Fuera de plan',
   'sin-dato': 'Sin dato',
 }
 
@@ -341,7 +346,7 @@ function dividirSeguro(numerador: number | null, denominador: number | null): nu
 
 /**
  * Cuenta cuántos indicadores hay en cada estado. Para el resumen de cabecera
- * («3 en objetivo · 1 en riesgo · 1 crítico»), que debe leerse sin scroll.
+ * («3 en plan · 1 al límite · 1 fuera de plan»), que debe leerse sin scroll.
  */
 export function resumirEstados(comparativas: readonly Comparativa[]): Record<Estado, number> {
   const resumen: Record<Estado, number> = { ok: 0, alerta: 0, critico: 0, 'sin-dato': 0 }

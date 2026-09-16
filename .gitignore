@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# firebase: la clave de servicio nunca va al repositorio
+*firebase-adminsdk*.json
+.firebase/
+firebase-debug.log
+firestore-debug.log

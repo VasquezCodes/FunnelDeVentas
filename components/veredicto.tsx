@@ -20,8 +20,8 @@
 
 import type { Estado, Periodo } from '@/lib/tipos'
 import type { Lectura } from '@/lib/lectura'
-import { formatearCumplimiento } from '@/lib/comparacion'
-import { ETIQUETAS_SEMAFORO, Semaforo, varEstado, varEstadoSuave } from '@/components/semaforo'
+import { ETIQUETAS_ESTADO, formatearCumplimiento } from '@/lib/comparacion'
+import { Semaforo, varEstado, varEstadoSuave } from '@/components/semaforo'
 
 /** Orden de la tira: de lo bueno a lo que falta. Es el orden en que se cuenta. */
 const ORDEN_ESTADOS: Estado[] = ['ok', 'alerta', 'critico', 'sin-dato']
@@ -60,7 +60,7 @@ export function Veredicto({ lectura, periodo }: VeredictoProps) {
               es el TAMAÑO; añadirle además el color del semáforo lo convierte
               en un adorno de marca y, peor, gasta el rojo y el ámbar en algo
               que ya dice la frase de al lado con palabras. El estado va en su
-              píldora, pequeña, con icono y texto, como en todo el sistema. */}
+              semáforo, pequeño, con marca y palabra, como en todo el sistema. */}
           {cumplimiento !== null && (
             <div className="shrink-0 text-right">
               <p
@@ -94,7 +94,7 @@ export function Veredicto({ lectura, periodo }: VeredictoProps) {
               aria-label={
                 'Reparto de indicadores: ' +
                 ORDEN_ESTADOS.filter((e) => reparto[e] > 0)
-                  .map((e) => `${reparto[e]} ${ETIQUETAS_SEMAFORO[e].toLowerCase()}`)
+                  .map((e) => `${reparto[e]} ${ETIQUETAS_ESTADO[e].toLowerCase()}`)
                   .join(', ')
               }
             >
@@ -134,7 +134,7 @@ export function Veredicto({ lectura, periodo }: VeredictoProps) {
                       }}
                     />
                     <span className="cifra font-medium text-foreground">{reparto[estado]}</span>
-                    <span>{ETIQUETAS_SEMAFORO[estado].toLowerCase()}</span>
+                    <span>{ETIQUETAS_ESTADO[estado].toLowerCase()}</span>
                   </li>
                 ),
               )}

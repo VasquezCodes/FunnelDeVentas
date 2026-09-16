@@ -1,409 +1,583 @@
 'use client'
 
 /**
- * Captura manual de los valores REALES de un periodo.
+ * Captura manual de los valores REALES de un mes, quincena a quincena y por
+ * bloques.
  *
  * Es la pantalla donde una persona se sienta con el informe de HighLevel
- * delante y teclea lo que de verdad pasó. Tres decisiones la gobiernan:
+ * delante y teclea lo que de verdad pasó. Tiene que entenderse a simple
+ * vista: una tabla por bloque, dos casillas por fila y, al lado, el total
+ * del mes y su plan para comparar. Nada más. El juicio (semáforos,
+ * cumplimiento, gráficos) vive en el tablero; aquí se escribe.
  *
- *  1. LA META SIEMPRE A LA VISTA, en gris y de solo lectura. Capturar a
- *     ciegas y descubrir después que se falló el plan es peor que verlo
- *     mientras se teclea: quien captura suele ser quien puede explicar el
- *     desvío, y lo explica mejor en caliente.
+ *  1. SE CAPTURA POR QUINCENA. Cada indicador tiene dos casillas, la 1ª y la
+ *     2ª quincena, que se guardan por separado. El total del mes no se
+ *     teclea: se calcula con la misma regla que usa el tablero
+ *     (`resumirMes`).
  *
- *  2. FEEDBACK EN VIVO. Desviación, cumplimiento y semáforo se recalculan
- *     en cada pulsación con el mismo motor puro que pinta el tablero
- *     (`compararIndicador`), no con una fórmula duplicada aquí. Si el
- *     tablero y esta pantalla difirieran, nadie confiaría en ninguno.
+ *  2. POR BLOQUES, COMO EN EL EXCEL. Cada etapa con sus canales, en el orden
+ *     en que avanza el lead; luego el dinero, el gasto y, plegados, los
+ *     insumos (`lib/captura/bloques.ts`). Cada bloque lleva sus propios
+ *     nombres de columna: se lee solo, sin buscar una cabecera más arriba.
  *
- *  3. VACÍO NO ES CERO. Un indicador sin capturar se guarda como ausente,
- *     nunca como 0: un 0 es un dato («no hubo cierres») y contamina el
- *     semáforo y las medias. Por eso el guardado avisa de los huecos pero
- *     no bloquea: un periodo a medio capturar es un estado legítimo.
+ *  3. LOS TOTALES NO SE TECLEAN. Los cinco totales salen de sumar sus partes
+ *     (`completarTotales`) y van en la última fila del bloque, sin casilla:
+ *     no pueden descuadrar.
  *
- * Sin base de datos todavía: el estado vive en `useState` y sale por el
- * callback `onGuardar`. Cuando exista persistencia, este componente no
- * cambia — cambia quién le pasa `onGuardar`.
+ *  4. VACÍO NO ES CERO. Una casilla vacía no se guarda; un 0 sí, porque es un
+ *     dato («no hubo cierres»).
+ *
+ *  5. GUARDAR PIDE LA CONTRASEÑA, SIEMPRE. No hay cuentas: la contraseña de
+ *     captura es lo que impide que cualquiera con el enlace cambie las
+ *     cifras. Se pide en cada guardado y no se recuerda.
  */
 
-import { useId, useMemo, useState } from 'react'
+import { startTransition, useEffect, useId, useMemo, useState, useTransition } from 'react'
+import { ArrowsClockwiseIcon, CaretDownIcon, CheckIcon, WarningIcon } from '@phosphor-icons/react/ssr'
 import {
-  ArrowsClockwiseIcon,
-  CheckIcon,
-  PencilSimpleLineIcon,
-  WarningIcon,
-} from '@phosphor-icons/react/ssr'
+  BadgeCheck,
+  Coins,
+  Layers,
+  PhoneCall,
+  ScanSearch,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 
-import type { Indicador, Meta, Periodo, Real } from '@/lib/tipos'
+import type { Indicador, Meta, Periodo, Real, Unidad } from '@/lib/tipos'
+import { formatearValor } from '@/lib/comparacion'
+import { resumirMes } from '@/lib/reales/mes'
+import { BLOQUES, type BloqueCaptura } from '@/lib/captura/bloques'
+import { completarTotales } from '@/lib/captura/totales'
 import {
-  SIN_DATO,
-  compararIndicador,
-  formatearCumplimiento,
-  formatearDesviacion,
-  formatearValor,
-} from '@/lib/comparacion'
-import { Semaforo } from '@/components/semaforo'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+  PATRON_ENTRADA,
+  aBorrador,
+  aNumero,
+  aValores,
+  mismoValor,
+} from '@/lib/captura/borrador'
+import { cn } from '@/lib/utils'
+import type { ResultadoGuardado } from '@/app/captura/acciones'
+import { COLOR_FAMILIA } from '@/components/graficos/config'
+import { IconoEnPastilla } from '@/components/graficos/hoja'
+import { DialogoClave } from '@/components/dialogo-clave'
 
-// ── Utilidades de entrada ───────────────────────────────────────────────
+// ── Estructura ──────────────────────────────────────────────────────────
 
-/**
- * Lo que se admite mientras se teclea: dígitos y como mucho un separador
- * decimal con dos cifras. No hay signo menos, ni notación científica, ni
- * separador de millares.
- *
- * La validación «solo números >= 0» se aplica AL TECLEAR, no al guardar:
- * una tecla que no cabe simplemente no entra. Un mensaje de error a
- * posteriori obliga a leer, entender y corregir; un campo que nunca llega
- * a estar mal no obliga a nada.
- */
-const PATRON_ENTRADA = /^\d*(?:[.,]\d{0,2})?$/
+/** Rejilla compartida por los nombres de columna, cada fila y cada total. */
+const REJILLA =
+  'grid grid-cols-[minmax(9rem,1fr)_8rem_8rem_7rem_7rem] items-center gap-x-4'
 
-/**
- * Texto del campo → número del dominio. Devuelve null para el campo vacío
- * (y para un separador suelto, estado intermedio real al teclear «,5»).
- * Se acepta la coma decimal porque es la que trae el teclado en español.
- */
-function aNumero(texto: string): number | null {
-  const limpio = texto.trim().replace(',', '.')
-  if (limpio === '' || limpio === '.') return null
-  const valor = Number(limpio)
-  return Number.isFinite(valor) && valor >= 0 ? valor : null
-}
+/** Por debajo de este ancho la tabla scrollea dentro de su caja, nunca la página. */
+const ANCHO_TABLA = 'min-w-[46rem]'
 
-/** Registros existentes → borrador editable, indexado por indicador. */
-function aBorrador(reales: readonly Real[]): Record<string, string> {
-  const borrador: Record<string, string> = {}
-  for (const real of reales) {
-    borrador[real.indicadorId] = Number.isFinite(real.valor) ? String(real.valor) : ''
-  }
-  return borrador
-}
-
-/** Hairline: nunca un gris de 1px genérico, siempre mezclado con el fondo. */
 const HAIRLINE = 'border-[color-mix(in_oklab,var(--foreground)_7%,transparent)]'
 
-/** Rejilla compartida por la cabecera y por cada fila: una sola verdad. */
-const REJILLA =
-  'grid grid-cols-[minmax(11rem,1fr)_5.5rem_8rem_6.5rem_5.5rem_9.5rem] items-center gap-x-3'
+type Quincena = 'q1' | 'q2'
+const QUINCENAS: Quincena[] = ['q1', 'q2']
+
+const COLUMNAS = ['1ª quincena', '2ª quincena', 'Total mes', 'Plan mes'] as const
+
+/**
+ * Icono y color de cada bloque: los mismos que el tablero, para que un
+ * bloque se reconozca igual aquí que allí.
+ */
+const APARIENCIA: Record<string, { Icono: LucideIcon; color: string }> = {
+  eleads: { Icono: Users, color: COLOR_FAMILIA.embudo },
+  llamadas: { Icono: PhoneCall, color: COLOR_FAMILIA.embudo },
+  'discoveries-propuestas': { Icono: ScanSearch, color: COLOR_FAMILIA.embudo },
+  ventas: { Icono: BadgeCheck, color: COLOR_FAMILIA.embudo },
+  ingresos: { Icono: Coins, color: COLOR_FAMILIA.dinero },
+  captacion: { Icono: Wallet, color: COLOR_FAMILIA.captacion },
+  insumos: { Icono: Layers, color: 'var(--muted-foreground)' },
+}
+const APARIENCIA_NEUTRA = { Icono: Layers, color: 'var(--muted-foreground)' }
+
+/** Una cifra, o nada si no hay dato: en esta tabla un hueco se lee mejor que un guion. */
+const cifra = (valor: number | null, unidad: Unidad) =>
+  valor === null ? '' : formatearValor(valor, unidad)
 
 // ── Props ───────────────────────────────────────────────────────────────
 
-interface CapturaManualProps {
-  periodo: Periodo
+export interface CapturaManualProps {
+  /** El mes que se captura (siempre un periodo de tipo 'mes'). */
+  mes: Periodo
   indicadores: Indicador[]
-  metas: Meta[]
-  realesIniciales: Real[]
-  onGuardar: (valores: Real[]) => void
+  metasQ1: Meta[]
+  metasQ2: Meta[]
+  realesQ1: Real[]
+  realesQ2: Real[]
+  /** Por qué no se puede guardar ahora, o null si se puede. */
+  bloqueo: string | null
+  onGuardar: (
+    q1: Record<string, number>,
+    q2: Record<string, number>,
+    clave: string,
+  ) => Promise<ResultadoGuardado>
+  /** Cuántas casillas difieren de lo guardado: el tablero avisa antes de salir. */
+  onCambiosPendientes: (cuantos: number) => void
 }
 
 // ── Componente ──────────────────────────────────────────────────────────
 
 export function CapturaManual({
-  periodo,
+  mes,
   indicadores,
-  metas,
-  realesIniciales,
+  metasQ1,
+  metasQ2,
+  realesQ1,
+  realesQ2,
+  bloqueo,
   onGuardar,
+  onCambiosPendientes,
 }: CapturaManualProps) {
   const prefijoId = useId()
 
-  const [borrador, setBorrador] = useState<Record<string, string>>(() =>
-    aBorrador(realesIniciales),
-  )
+  const [guardado, setGuardado] = useState(() => ({
+    q1: aBorrador(realesQ1),
+    q2: aBorrador(realesQ2),
+  }))
+  const [borrador, setBorrador] = useState(guardado)
 
   /**
-   * Al cambiar de periodo hay que recargar el borrador. Se hace ajustando
-   * el estado durante el render (patrón oficial de React para estado
-   * derivado de props) en vez de con un efecto: así no se pinta ni un
-   * fotograma con las cifras del periodo anterior bajo el título del
-   * nuevo, que es exactamente el error que haría capturar datos cruzados.
+   * Al cambiar de mes se recarga todo, ajustando el estado durante el render
+   * (patrón oficial de React para estado derivado de props): así no se pinta
+   * ni un fotograma con las cifras del mes anterior bajo el título del nuevo.
+   * El tablero ya preguntó antes si había cambios sin guardar.
    */
-  const [periodoSincronizado, setPeriodoSincronizado] = useState(periodo.id)
-  const [intentoGuardar, setIntentoGuardar] = useState(false)
-  if (periodoSincronizado !== periodo.id) {
-    setPeriodoSincronizado(periodo.id)
-    setBorrador(aBorrador(realesIniciales))
-    setIntentoGuardar(false)
+  const [mesSincronizado, setMesSincronizado] = useState(mes.id)
+  if (mesSincronizado !== mes.id) {
+    const nuevo = { q1: aBorrador(realesQ1), q2: aBorrador(realesQ2) }
+    setMesSincronizado(mes.id)
+    setGuardado(nuevo)
+    setBorrador(nuevo)
   }
 
-  const metaPorIndicador = useMemo(() => {
-    const mapa = new Map<string, number>()
-    for (const meta of metas) mapa.set(meta.indicadorId, meta.valor)
-    return mapa
-  }, [metas])
+  const [pidiendoClave, setPidiendoClave] = useState(false)
+  const [guardando, iniciarGuardado] = useTransition()
+  const [errorClave, setErrorClave] = useState<string | null>(null)
+  /** El último guardado bueno: su aviso sale cuando el tablero ya está al día. */
+  const [guardadoBien, setGuardadoBien] = useState<{ cifras: number; mes: string } | null>(null)
 
-  /**
-   * Una fila por indicador, ya comparada. Se recalcula en cada pulsación:
-   * son siete divisiones, no hay nada que memorizar y sí mucho que perder
-   * si el semáforo va un carácter por detrás de lo que se ve escrito.
-   */
-  const filas = indicadores.map((indicador) => {
-    const texto = borrador[indicador.id] ?? ''
-    const valor = aNumero(texto)
-    const meta = metaPorIndicador.get(indicador.id) ?? null
-    return {
-      indicador,
-      texto,
-      valor,
-      meta,
-      comparativa: compararIndicador(indicador, meta, valor),
-      idInput: `${prefijoId}-${indicador.id}`,
-    }
-  })
+  /** Los indicadores que el plan trajo: uno perdido (una incidencia) no pinta fila. */
+  const porId = useMemo(() => new Map(indicadores.map((i) => [i.id, i])), [indicadores])
 
-  const capturados = filas.filter((fila) => fila.valor !== null).length
-  const pendientes = filas.length - capturados
+  const metaDe = useMemo(
+    () => ({
+      q1: new Map(metasQ1.map((m) => [m.indicadorId, m.valor])),
+      q2: new Map(metasQ2.map((m) => [m.indicadorId, m.valor])),
+    }),
+    [metasQ1, metasQ2],
+  )
 
-  function escribir(indicadorId: string, texto: string) {
+  /** Las casillas de la pantalla, en orden: las filas de los bloques que existen. */
+  const capturables = useMemo(
+    () =>
+      BLOQUES.flatMap((b) => b.grupos.flatMap((g) => g.filas)).filter((id) => porId.has(id)),
+    [porId],
+  )
+
+  // Las cifras tecleadas y, con ellas, los totales de cada quincena. Se
+  // recalculan en cada pulsación: son pocas sumas, y un total no puede ir un
+  // carácter por detrás de sus canales.
+  const valores = { q1: aValores(borrador.q1), q2: aValores(borrador.q2) }
+  const conTotales = { q1: completarTotales(valores.q1), q2: completarTotales(valores.q2) }
+
+  const cambiado = (q: Quincena, id: string) => !mismoValor(borrador[q][id], guardado[q][id])
+  // Solo cuentan las casillas tecleadas: un total que cambia porque cambió
+  // un canal no es un cambio aparte.
+  const cambios = capturables.reduce(
+    (n, id) => n + Number(cambiado('q1', id)) + Number(cambiado('q2', id)),
+    0,
+  )
+  const hayCambios = cambios > 0
+
+  useEffect(() => {
+    onCambiosPendientes(cambios)
+  }, [cambios, onCambiosPendientes])
+
+  // Recargar o cerrar la pestaña con cambios sin guardar: el navegador pregunta.
+  useEffect(() => {
+    if (cambios === 0) return
+    const avisar = (evento: BeforeUnloadEvent) => evento.preventDefault()
+    window.addEventListener('beforeunload', avisar)
+    return () => window.removeEventListener('beforeunload', avisar)
+  }, [cambios])
+
+  // El aviso sale al confirmar la transición, cuando el tablero ya se ha
+  // vuelto a pintar con lo guardado.
+  useEffect(() => {
+    if (!guardadoBien) return
+    toast.success('Cambios guardados', {
+      description: `${guardadoBien.mes}: ${guardadoBien.cifras} ${guardadoBien.cifras === 1 ? 'cifra' : 'cifras'}.`,
+    })
+  }, [guardadoBien])
+
+  function escribir(quincena: Quincena, indicadorId: string, texto: string) {
     // Una entrada que no encaja se descarta entera: el campo se queda como
     // estaba y el cursor no salta. Nunca se guarda un valor inválido.
     if (!PATRON_ENTRADA.test(texto)) return
-    setBorrador((anterior) => ({ ...anterior, [indicadorId]: texto }))
+    setBorrador((anterior) => ({
+      ...anterior,
+      [quincena]: { ...anterior[quincena], [indicadorId]: texto },
+    }))
   }
 
-  function guardar() {
-    setIntentoGuardar(true)
+  function confirmar(clave: string) {
+    setErrorClave(null)
+    const enviado = borrador
+    const cifras = cambios
+    // Dentro de una transición, como pide Next para invocar una Server Action
+    // desde un evento: así «Guardando…» dura hasta que el tablero ya se ha
+    // vuelto a pintar con lo guardado, y no solo hasta que responde la acción.
+    iniciarGuardado(async () => {
+      let resultado: ResultadoGuardado
+      try {
+        resultado = await onGuardar(aValores(enviado.q1), aValores(enviado.q2), clave)
+      } catch {
+        resultado = {
+          ok: false,
+          motivo: 'servidor',
+          mensaje: 'No se pudo conectar con el servidor. Inténtalo de nuevo.',
+        }
+      }
+      // Tras un await, React pide volver a envolver las actualizaciones para
+      // que sigan dentro de la transición.
+      startTransition(() => {
+        if (!resultado.ok) {
+          setErrorClave(resultado.mensaje)
+          return
+        }
+        setGuardado(enviado)
+        setPidiendoClave(false)
+        setGuardadoBien({ cifras, mes: mes.etiqueta })
+      })
+    })
+  }
 
-    const capturadoEn = new Date().toISOString()
+  /** Las cifras de una fila: cada quincena, el total del mes y el plan del mes. */
+  function delMes(indicador: Indicador) {
+    const q1 = conTotales.q1[indicador.id] ?? null
+    const q2 = conTotales.q2[indicador.id] ?? null
+    const metaQ1 = metaDe.q1.get(indicador.id) ?? null
+    const metaQ2 = metaDe.q2.get(indicador.id) ?? null
+    // Las metas de las quincenas suman exactamente el mes (lib/plan/quincenas.ts).
+    const plan =
+      metaQ1 !== null && metaQ2 !== null ? Math.round((metaQ1 + metaQ2) * 100) / 100 : null
+    return { q1, q2, total: resumirMes(q1, q2, metaQ1, metaQ2, plan).real, plan }
+  }
 
-    // Solo viajan los indicadores con dato. Los huecos se quedan fuera del
-    // array: ausencia de registro es ausencia de dato, no un cero.
-    const valores: Real[] = filas
-      .filter((fila): fila is typeof fila & { valor: number } => fila.valor !== null)
-      .map((fila) => ({
-        periodoId: periodo.id,
-        indicadorId: fila.indicador.id,
-        valor: fila.valor,
-        origen: 'manual' as const,
-        capturadoEn,
-      }))
+  /** Los nombres de columna de un bloque, en la fila de su título. */
+  function nombresDeColumna(ocultos = false) {
+    return COLUMNAS.map((nombre) => (
+      <span
+        key={nombre}
+        className={cn(
+          'text-right text-xs font-medium text-muted-foreground',
+          // En un bloque plegado solo se ven al abrirlo.
+          ocultos && 'invisible group-open/plegado:visible',
+        )}
+      >
+        {nombre}
+      </span>
+    ))
+  }
 
-    onGuardar(valores)
+  function titulo(bloque: BloqueCaptura, idTitulo: string, detalle?: string) {
+    const { Icono, color } = APARIENCIA[bloque.id] ?? APARIENCIA_NEUTRA
+    return (
+      <span className="flex min-w-0 items-center gap-2.5">
+        <IconoEnPastilla Icono={Icono} color={color} tamano="sm" />
+        <h3 id={idTitulo} className="truncate text-[0.9375rem] font-semibold text-foreground">
+          {bloque.titulo}
+        </h3>
+        {detalle && (
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{detalle}</span>
+        )}
+      </span>
+    )
+  }
 
-    toast.success('Periodo guardado', {
-      description:
-        pendientes === 0
-          ? `${periodo.etiqueta} · ${capturados} indicadores capturados.`
-          : `${periodo.etiqueta} · ${capturados} capturados, ${pendientes} sin dato todavía.`,
+  function fila(bloque: BloqueCaptura, indicador: Indicador) {
+    const { total, plan } = delMes(indicador)
+    return (
+      <div key={indicador.id} className={cn(REJILLA, 'border-t py-1.5', HAIRLINE)}>
+        <span title={indicador.definicion} className="truncate text-sm text-foreground">
+          {indicador.nombre}
+        </span>
+        {QUINCENAS.map((q) => (
+          <Casilla
+            key={q}
+            id={`${prefijoId}-${q}-${indicador.id}`}
+            // El nombre visible es el del catálogo («Publicidad»); el que se
+            // lee en voz alta dice además de qué bloque es.
+            etiqueta={`${bloque.titulo}, ${indicador.nombre}, ${q === 'q1' ? '1ª' : '2ª'} quincena`}
+            texto={borrador[q][indicador.id] ?? ''}
+            unidad={indicador.unidad}
+            cambiado={cambiado(q, indicador.id)}
+            onEscribir={(texto) => escribir(q, indicador.id, texto)}
+          />
+        ))}
+        <span className="text-right text-sm font-medium text-foreground tabular-nums">
+          {cifra(total, indicador.unidad)}
+        </span>
+        <span className="text-right text-sm text-muted-foreground tabular-nums">
+          {cifra(plan, indicador.unidad)}
+        </span>
+      </div>
+    )
+  }
+
+  /** La fila del total: raya más marcada encima y cifras en negrita, sin casilla. */
+  function filaTotal(totalId: string) {
+    const indicador = porId.get(totalId)
+    if (!indicador) return null
+    const { q1, q2, total, plan } = delMes(indicador)
+    return (
+      <div
+        data-total
+        className={cn(REJILLA, 'border-t py-2.5 text-sm tabular-nums')}
+        style={{ borderColor: 'var(--regla)' }}
+      >
+        <span className="font-semibold text-foreground">Total</span>
+        {/* `pr-3`: el mismo relleno que la casilla, para acabar en la misma
+            vertical que las cifras tecleadas encima. */}
+        <span className="pr-3 text-right font-semibold text-foreground">{cifra(q1, indicador.unidad)}</span>
+        <span className="pr-3 text-right font-semibold text-foreground">{cifra(q2, indicador.unidad)}</span>
+        <span className="text-right font-semibold text-foreground">{cifra(total, indicador.unidad)}</span>
+        <span className="text-right font-medium text-muted-foreground">{cifra(plan, indicador.unidad)}</span>
+      </div>
+    )
+  }
+
+  function filasDe(bloque: BloqueCaptura) {
+    return bloque.grupos.map((grupo, i) => {
+      const filas = grupo.filas.map((id) => porId.get(id)).filter((x): x is Indicador => !!x)
+      if (filas.length === 0) return null
+      return (
+        <div key={grupo.titulo ?? i}>
+          {grupo.titulo && (
+            <p className={cn('border-t pt-3 pb-1 text-xs font-medium text-muted-foreground', HAIRLINE)}>
+              {grupo.titulo}
+            </p>
+          )}
+          {filas.map((indicador) => fila(bloque, indicador))}
+        </div>
+      )
     })
   }
 
   return (
-    <section className="bandeja aparecer">
+    <section className="bandeja aparecer mx-auto max-w-4xl">
       <div className="nucleo">
-        <form
-          onSubmit={(evento) => {
-            evento.preventDefault()
-            guardar()
-          }}
-          noValidate
-        >
-          {/* ── Cabecera ─────────────────────────────────────────────── */}
-          <header
-            className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b px-5 py-4 ${HAIRLINE}`}
-          >
-            <div>
-              {/* El mismo lápiz que el botón de la barra: el modo se reconoce
-                  igual allí que aquí. */}
-              <p className="eyebrow flex items-center gap-1.5">
-                <PencilSimpleLineIcon
-                  weight="duotone"
-                  aria-hidden="true"
-                  className="size-3.5 shrink-0 text-brand"
-                />
-                Captura manual
-              </p>
-              <h2 className="font-display mt-1 text-2xl leading-none tracking-tight text-foreground">
-                {periodo.etiqueta}
-              </h2>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {periodo.tipo === 'quincena' ? 'Quincena' : 'Mes'} · resultado real frente al plan
-              </p>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              <span className="cifra text-base text-foreground">{capturados}</span>
-              <span className="cifra"> / {filas.length}</span> indicadores capturados
-            </p>
-          </header>
-
-          {/* ── Rejilla de captura ───────────────────────────────────────
-              El contenedor scrollea en horizontal; el body nunca. */}
-          <div className="overflow-x-auto">
-            <div className="min-w-[46rem]">
-              <div
-                className={`${REJILLA} border-b px-5 py-2 ${HAIRLINE}`}
-                role="presentation"
-              >
-                <span className="eyebrow">Indicador</span>
-                <span className="eyebrow text-right">Meta</span>
-                <span className="eyebrow text-right">Real</span>
-                <span className="eyebrow text-right">Desviación</span>
-                <span className="eyebrow text-right">Cumpl.</span>
-                <span className="eyebrow">Estado</span>
-              </div>
-
-              <div>
-                {filas.map((fila) => {
-                  const { indicador, comparativa } = fila
-                  const vacio = fila.valor === null
-                  const avisarVacio = vacio && intentoGuardar
-                  const idAyuda = `${fila.idInput}-ayuda`
-
-                  return (
-                    <div
-                      key={indicador.id}
-                      className={`${REJILLA} border-b px-5 py-2 transition-colors duration-200 [transition-timing-function:var(--ease-fluid)] last:border-b-0 hover:bg-muted/50 ${HAIRLINE}`}
-                    >
-                      {/* Nombre = etiqueta del campo: al hacer clic, foco al input. */}
-                      <Label
-                        htmlFor={fila.idInput}
-                        title={indicador.definicion}
-                        className="cursor-pointer text-sm font-medium text-foreground"
-                      >
-                        {indicador.nombre}
-                      </Label>
-
-                      {/* Meta: referencia, gris, jamás editable. */}
-                      <span className="cifra text-right text-sm text-muted-foreground">
-                        {formatearValor(fila.meta, indicador.unidad)}
-                      </span>
-
-                      {/* Real: el único campo que se toca. */}
-                      <div className="relative">
-                        {indicador.unidad === 'moneda' && (
-                          <span
-                            aria-hidden="true"
-                            className="cifra pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
-                          >
-                            $
-                          </span>
-                        )}
-                        {indicador.unidad === 'porcentaje' && (
-                          <span
-                            aria-hidden="true"
-                            className="cifra pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
-                          >
-                            %
-                          </span>
-                        )}
-                        <Input
-                          id={fila.idInput}
-                          /*
-                           * type="text" con inputMode="decimal" y no
-                           * type="number": el campo numérico nativo admite
-                           * «e», «+» y «-», y sobre todo cambia el valor con
-                           * la rueda del ratón al pasar por encima. En una
-                           * pantalla de captura eso es corromper un dato sin
-                           * que nadie lo note. El teclado del móvil sigue
-                           * saliendo numérico gracias a inputMode.
-                           */
-                          type="text"
-                          inputMode="decimal"
-                          autoComplete="off"
-                          value={fila.texto}
-                          onChange={(evento) => escribir(indicador.id, evento.target.value)}
-                          placeholder={SIN_DATO}
-                          aria-describedby={idAyuda}
-                          aria-invalid={avisarVacio || undefined}
-                          className={`cifra text-right tabular-nums ${
-                            indicador.unidad === 'moneda' ? 'pl-6' : ''
-                          } ${indicador.unidad === 'porcentaje' ? 'pr-6' : ''} ${
-                            avisarVacio
-                              ? 'border-estado-alerta/60 bg-[var(--estado-alerta-suave)]'
-                              : ''
-                          }`}
-                        />
-                      </div>
-
-                      {/*
-                       * Desviación y cumplimiento en color de texto neutro,
-                       * nunca en color de estado: el juicio lo emite el
-                       * semáforo y lo emite una sola vez. Dos elementos
-                       * diciendo lo mismo en rojo convierten una fila floja
-                       * en una alarma.
-                       */}
-                      <span className="cifra text-right text-sm text-foreground">
-                        {formatearDesviacion(comparativa.desviacion, indicador.unidad)}
-                      </span>
-                      <span className="cifra text-right text-sm text-muted-foreground">
-                        {formatearCumplimiento(comparativa.cumplimiento)}
-                      </span>
-
-                      <span id={idAyuda} className="min-w-0">
-                        <Semaforo estado={comparativa.estado} />
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+        {/* ── Cabecera ─────────────────────────────────────────────── */}
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-6 pt-6">
+          <div>
+            <h2 className="font-display text-3xl leading-none tracking-tight text-foreground">
+              {mes.etiqueta}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">Escribe lo que pasó en cada quincena.</p>
           </div>
 
-          {/* ── Pie: aviso de huecos, nota de fase 2 y acción ─────────── */}
-          <footer className={`flex flex-wrap items-center justify-between gap-4 border-t px-5 py-4 ${HAIRLINE}`}>
-            <div className="max-w-md space-y-2">
-              {/* El aviso solo aparece tras intentar guardar. Antes sería
-                  regañar a alguien por no haber terminado de escribir. */}
-              {intentoGuardar && pendientes > 0 && (
-                <p
-                  role="status"
-                  className="flex items-start gap-2 text-xs text-[var(--estado-alerta)]"
-                >
-                  <WarningIcon
-                    weight="duotone"
-                    aria-hidden="true"
-                    className="mt-px size-3.5 shrink-0"
-                  />
-                  <span>
-                    <span className="cifra">{pendientes}</span>{' '}
-                    {pendientes === 1 ? 'indicador queda' : 'indicadores quedan'} sin dato. Se ha
-                    guardado igual: podrás completarlo más adelante.
-                  </span>
-                </p>
-              )}
-
-              <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                {/* Flechas en círculo y no una «i»: lo que anuncia la nota es
-                    la sincronización con el CRM, y el icono lo dice antes de
-                    leerla. */}
-                <ArrowsClockwiseIcon
-                  weight="duotone"
-                  aria-hidden="true"
-                  className="mt-px size-3.5 shrink-0 text-brand"
-                />
+          <p
+            data-contador
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            aria-live="polite"
+          >
+            {hayCambios ? (
+              <>
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-brand" />
                 <span>
-                  Los valores capturados aquí se sustituirán por la sincronización automática con
-                  el CRM en la fase 2. La captura manual quedará como respaldo.
+                  <span className="font-medium text-foreground tabular-nums">{cambios}</span>{' '}
+                  {cambios === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}
                 </span>
-              </p>
-            </div>
+              </>
+            ) : (
+              <>
+                <CheckIcon weight="bold" aria-hidden="true" className="size-3.5 text-estado-ok" />
+                Todo guardado
+              </>
+            )}
+          </p>
+        </header>
 
-            {/*
-             * Botón dentro de botón: el círculo del icono es una pieza
-             * propia pegada al borde interior. Al pasar el ratón se desplaza
-             * 2 px en diagonal y escala un 5 % — solo transform y opacidad,
-             * nada que provoque relayout.
-             */}
-            <button
-              type="submit"
-              className="group/guardar relative inline-flex h-11 shrink-0 items-center rounded-full bg-brand pl-5 pr-12 text-sm font-medium text-primary-foreground shadow-[var(--sombra-tray)] transition-[transform,background-color] duration-300 [transition-timing-function:var(--ease-fluid)] outline-none hover:bg-[var(--brand-strong)] focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98]"
-            >
-              Guardar periodo
-              <span
+        {/* ── Bloques ── En pantalla estrecha scrollean dentro de su caja. */}
+        <div className="overflow-x-auto pb-4">
+          <div className={cn(ANCHO_TABLA, 'px-6')}>
+            {BLOQUES.map((bloque) => {
+              const idTitulo = `${prefijoId}-bloque-${bloque.id}`
+
+              if (bloque.plegado) {
+                // Plegar no descarta nada: sus casillas siguen en el borrador
+                // y en el contador de cambios.
+                const filas = bloque.grupos.flatMap((g) => g.filas).filter((id) => porId.has(id))
+                if (filas.length === 0) return null
+                const capturados = filas.filter(
+                  (id) => aNumero(borrador.q1[id] ?? '') !== null || aNumero(borrador.q2[id] ?? '') !== null,
+                ).length
+                return (
+                  <details key={bloque.id} className="group/plegado pt-8">
+                    <summary
+                      className={cn(
+                        REJILLA,
+                        'cursor-pointer list-none rounded-md pb-2 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden',
+                      )}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        {titulo(bloque, idTitulo, `${capturados} de ${filas.length}`)}
+                        <CaretDownIcon
+                          weight="bold"
+                          aria-hidden="true"
+                          className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-open/plegado:rotate-180"
+                        />
+                      </span>
+                      {nombresDeColumna(true)}
+                    </summary>
+                    {filasDe(bloque)}
+                  </details>
+                )
+              }
+
+              const hayFilas = bloque.grupos.some((g) => g.filas.some((id) => porId.has(id)))
+              if (!hayFilas) return null
+              return (
+                <div key={bloque.id} role="group" aria-labelledby={idTitulo} className="pt-8">
+                  <div className={cn(REJILLA, 'pb-2')}>
+                    {titulo(bloque, idTitulo)}
+                    {nombresDeColumna()}
+                  </div>
+                  {filasDe(bloque)}
+                  {bloque.total && filaTotal(bloque.total)}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Pie ── Con cambios pendientes se pega al borde de abajo de la
+            ventana: guardar queda a mano esté donde esté la fila escrita. */}
+        <footer
+          className={cn(
+            'z-10 flex flex-wrap items-center justify-between gap-4 rounded-b-[0.9375rem] border-t px-6 py-4',
+            'bg-[color-mix(in_oklab,var(--card)_94%,transparent)] backdrop-blur-md',
+            hayCambios && 'sticky bottom-0 shadow-[0_-12px_28px_-20px_rgba(29,29,27,0.35)]',
+            HAIRLINE,
+          )}
+        >
+          <div className="max-w-md space-y-1.5">
+            {bloqueo && (
+              <p role="status" className="flex items-start gap-2 text-xs text-estado-alerta">
+                <WarningIcon weight="duotone" aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                <span>{bloqueo}</span>
+              </p>
+            )}
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+              <ArrowsClockwiseIcon
+                weight="duotone"
                 aria-hidden="true"
-                className="absolute right-2 grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/15 transition-transform duration-300 [transition-timing-function:var(--ease-fluid)] group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
-              >
-                <CheckIcon weight="bold" className="size-3.5" />
-              </span>
-            </button>
-          </footer>
-        </form>
+                className="mt-px size-3.5 shrink-0 text-brand"
+              />
+              <span>En la fase 2 estas cifras llegarán solas del CRM.</span>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={!hayCambios || bloqueo !== null}
+            onClick={() => {
+              setErrorClave(null)
+              setPidiendoClave(true)
+            }}
+            className="group/guardar relative inline-flex h-11 shrink-0 items-center rounded-full bg-brand pr-12 pl-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-[transform,background-color,opacity] duration-300 ease-(--ease-fluid) outline-none hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Guardar cambios
+            <span
+              aria-hidden="true"
+              className="absolute right-2 grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/15 transition-transform duration-300 ease-(--ease-fluid) group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
+            >
+              <CheckIcon weight="bold" className="size-3.5" />
+            </span>
+          </button>
+        </footer>
       </div>
+
+      <DialogoClave
+        abierto={pidiendoClave}
+        guardando={guardando}
+        error={errorClave}
+        cambios={cambios}
+        onConfirmar={confirmar}
+        onCancelar={() => setPidiendoClave(false)}
+      />
     </section>
+  )
+}
+
+/** Una casilla de quincena: una caja de las de siempre, cifra a la derecha. */
+function Casilla({
+  id,
+  etiqueta,
+  texto,
+  unidad,
+  cambiado,
+  onEscribir,
+}: {
+  id: string
+  etiqueta: string
+  texto: string
+  unidad: Unidad
+  cambiado: boolean
+  onEscribir: (texto: string) => void
+}) {
+  return (
+    <div className="relative">
+      {unidad === 'moneda' && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          $
+        </span>
+      )}
+      <input
+        id={id}
+        aria-label={etiqueta}
+        /*
+         * type="text" con inputMode="decimal" y no type="number": el campo
+         * numérico nativo admite «e», «+» y «-», y cambia el valor con la
+         * rueda del ratón. En una pantalla de captura eso es corromper un
+         * dato sin que nadie lo note. El teclado del móvil sigue saliendo
+         * numérico gracias a inputMode.
+         */
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        value={texto}
+        onChange={(evento) => onEscribir(evento.target.value)}
+        data-cambiado={cambiado || undefined}
+        className={cn(
+          'h-9 w-full min-w-0 rounded-md border bg-card px-3 text-right text-sm text-foreground tabular-nums outline-none',
+          'border-(--regla) transition-[border-color,box-shadow] duration-150',
+          'hover:border-[color-mix(in_oklab,var(--foreground)_35%,transparent)]',
+          unidad === 'moneda' && 'pl-6',
+          unidad === 'porcentaje' && 'pr-7',
+          // Cambiado y aún sin guardar: borde y fondo de marca muy suaves.
+          cambiado &&
+            'border-[color-mix(in_oklab,var(--brand)_55%,transparent)] bg-[color-mix(in_oklab,var(--brand)_4%,var(--card))]',
+          'focus:border-brand focus:ring-3 focus:ring-[color-mix(in_oklab,var(--brand)_18%,transparent)]',
+        )}
+      />
+      {unidad === 'porcentaje' && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          %
+        </span>
+      )}
+    </div>
   )
 }
 

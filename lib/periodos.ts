@@ -316,3 +316,18 @@ export function compararPeriodos(a: Periodo, b: Periodo): number {
 export function mismoPeriodo(a: Periodo, b: Periodo): boolean {
   return a.id === b.id
 }
+
+// ── Mes en curso ────────────────────────────────────────────────────────
+
+/** «hasta el 15» o «desde el 16» si el mes está a medias; null si no. */
+export function marcaCobertura(p: Periodo): string | null {
+  if (p.cobertura === 'q1') return 'hasta el 15'
+  if (p.cobertura === 'q2') return 'desde el 16'
+  return null
+}
+
+/** La etiqueta con su marca: «Septiembre 2026 · hasta el 15». */
+export function etiquetaConCobertura(p: Periodo): string {
+  const marca = marcaCobertura(p)
+  return marca ? `${p.etiqueta} · ${marca}` : p.etiqueta
+}
