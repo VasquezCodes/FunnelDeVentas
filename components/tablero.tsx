@@ -293,6 +293,7 @@ export function Tablero({
       <Chasis vista={vista} onCambiarVista={cambiarVista} controles={controles}>
         <CapturaManual
           mes={mesCaptura}
+          periodoActivo={periodo}
           indicadores={indicadores}
           metasQ1={metasPorPeriodo[idQ1] ?? []}
           metasQ2={metasPorPeriodo[idQ2] ?? []}

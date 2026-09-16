@@ -66,10 +66,6 @@ import { DialogoClave } from '@/components/dialogo-clave'
 
 // ── Estructura ──────────────────────────────────────────────────────────
 
-/** Rejilla compartida por los nombres de columna, cada fila y cada total. */
-const REJILLA =
-  'grid grid-cols-[minmax(9rem,1fr)_8rem_8rem_7rem_7rem] items-center gap-x-4'
-
 /** Por debajo de este ancho la tabla scrollea dentro de su caja, nunca la página. */
 const ANCHO_TABLA = 'min-w-[46rem]'
 
@@ -77,8 +73,6 @@ const HAIRLINE = 'border-[color-mix(in_oklab,var(--foreground)_7%,transparent)]'
 
 type Quincena = 'q1' | 'q2'
 const QUINCENAS: Quincena[] = ['q1', 'q2']
-
-const COLUMNAS = ['1ª quincena', '2ª quincena', 'Total mes', 'Plan mes'] as const
 
 /**
  * Icono y color de cada bloque: los mismos que el tablero, para que un
@@ -104,6 +98,8 @@ const cifra = (valor: number | null, unidad: Unidad) =>
 export interface CapturaManualProps {
   /** El mes que se captura (siempre un periodo de tipo 'mes'). */
   mes: Periodo
+  /** El periodo actualmente seleccionado en el selector (puede ser mes o quincena). */
+  periodoActivo: Periodo
   indicadores: Indicador[]
   metasQ1: Meta[]
   metasQ2: Meta[]
@@ -124,6 +120,7 @@ export interface CapturaManualProps {
 
 export function CapturaManual({
   mes,
+  periodoActivo,
   indicadores,
   metasQ1,
   metasQ2,
@@ -134,6 +131,21 @@ export function CapturaManual({
   onCambiosPendientes,
 }: CapturaManualProps) {
   const prefijoId = useId()
+
+  const esMes = periodoActivo.tipo === 'mes'
+  const quincenasAMostrar: Quincena[] = esMes
+    ? ['q1', 'q2']
+    : periodoActivo.quincena === 1
+      ? ['q1']
+      : ['q2']
+
+  const columnasAMostrar = esMes
+    ? ['1ª quincena', '2ª quincena', 'Total mes', 'Plan mes']
+    : [periodoActivo.quincena === 1 ? '1ª quincena' : '2ª quincena', 'Total mes', 'Plan mes']
+
+  const claseRejilla = esMes
+    ? 'grid grid-cols-[minmax(9rem,1fr)_8rem_8rem_7rem_7rem] items-center gap-x-4'
+    : 'grid grid-cols-[minmax(9rem,1fr)_8rem_7rem_7rem] items-center gap-x-4'
 
   const [guardado, setGuardado] = useState(() => ({
     q1: aBorrador(realesQ1),
@@ -271,7 +283,7 @@ export function CapturaManual({
 
   /** Los nombres de columna de un bloque, en la fila de su título. */
   function nombresDeColumna(ocultos = false) {
-    return COLUMNAS.map((nombre) => (
+    return columnasAMostrar.map((nombre) => (
       <span
         key={nombre}
         className={cn(
@@ -303,11 +315,11 @@ export function CapturaManual({
   function fila(bloque: BloqueCaptura, indicador: Indicador) {
     const { total, plan } = delMes(indicador)
     return (
-      <div key={indicador.id} className={cn(REJILLA, 'border-t py-1.5', HAIRLINE)}>
+      <div key={indicador.id} className={cn(claseRejilla, 'border-t py-1.5', HAIRLINE)}>
         <span title={indicador.definicion} className="truncate text-sm text-foreground">
           {indicador.nombre}
         </span>
-        {QUINCENAS.map((q) => (
+        {quincenasAMostrar.map((q) => (
           <Casilla
             key={q}
             id={`${prefijoId}-${q}-${indicador.id}`}
@@ -338,14 +350,18 @@ export function CapturaManual({
     return (
       <div
         data-total
-        className={cn(REJILLA, 'border-t py-2.5 text-sm tabular-nums')}
+        className={cn(claseRejilla, 'border-t py-2.5 text-sm tabular-nums')}
         style={{ borderColor: 'var(--regla)' }}
       >
         <span className="font-semibold text-foreground">Total</span>
         {/* `pr-3`: el mismo relleno que la casilla, para acabar en la misma
             vertical que las cifras tecleadas encima. */}
-        <span className="pr-3 text-right font-semibold text-foreground">{cifra(q1, indicador.unidad)}</span>
-        <span className="pr-3 text-right font-semibold text-foreground">{cifra(q2, indicador.unidad)}</span>
+        {quincenasAMostrar.includes('q1') && (
+          <span className="pr-3 text-right font-semibold text-foreground">{cifra(q1, indicador.unidad)}</span>
+        )}
+        {quincenasAMostrar.includes('q2') && (
+          <span className="pr-3 text-right font-semibold text-foreground">{cifra(q2, indicador.unidad)}</span>
+        )}
         <span className="text-right font-semibold text-foreground">{cifra(total, indicador.unidad)}</span>
         <span className="text-right font-medium text-muted-foreground">{cifra(plan, indicador.unidad)}</span>
       </div>
@@ -421,7 +437,7 @@ export function CapturaManual({
                   <details key={bloque.id} className="group/plegado pt-8">
                     <summary
                       className={cn(
-                        REJILLA,
+                        claseRejilla,
                         'cursor-pointer list-none rounded-md pb-2 -outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden',
                       )}
                     >
@@ -444,7 +460,7 @@ export function CapturaManual({
               if (!hayFilas) return null
               return (
                 <div key={bloque.id} role="group" aria-labelledby={idTitulo} className="pt-8">
-                  <div className={cn(REJILLA, 'pb-2')}>
+                  <div className={cn(claseRejilla, 'pb-2')}>
                     {titulo(bloque, idTitulo)}
                     {nombresDeColumna()}
                   </div>
