@@ -119,7 +119,7 @@ function fichasDe(ventana: PuntoDeSerie[], etapas: Indicador[]): Ficha[] {
       Icono: Percent,
       color,
       formatear: formatearTasaConversion,
-      formatearEje: (n) => `${Math.round(n * 1000) / 10} %`,
+      formatearEje: (n) => `${String(Math.round(n * 1000) / 10).replace('.', ',')} %`,
       relacion: 'frente',
       puntos: ventana.map((p) => {
         const deBoca = buscar(p, boca.id)

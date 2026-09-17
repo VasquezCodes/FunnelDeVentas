@@ -11,13 +11,13 @@
  * Pero hay cuatro filas SIN clave que el tablero necesita, y son justo las
  * que más pesan:
  *
- *     FLECHA Mensualidad          $54 000 en abril
- *     ARCO Mensualidad            $45 000
- *     Ingresos                    $152 900  ← el total
- *     TOTAL GASTOS DE CAPTACIÓN   $5 868
+ *     FLECHA Mensualidad          54.000 € en abril
+ *     ARCO Mensualidad            45.000 €
+ *     Ingresos                    152.900 €  ← el total
+ *     TOTAL GASTOS DE CAPTACIÓN   5.868 €
  *
  * Las dos mensualidades son el 65 % del ingreso del mes. Leer solo las filas
- * con clave enseñaría $53 900 de ingreso contra un plan de $152 900, que no
+ * con clave enseñaría 53.900 € de ingreso contra un plan de 152.900 €, que no
  * es un matiz: es un tablero que miente. Por eso esas cuatro se localizan por
  * etiqueta, y solo esas cuatro — se ha comprobado que sus textos son únicos
  * en la hoja.

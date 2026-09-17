@@ -98,7 +98,7 @@ const PARTIDAS: Array<{ id: string; grupo: Grupo; Icono: LucideIcon; color: stri
 ]
 
 const GRUPOS: Record<Grupo, { nombre: string; Icono: LucideIcon; color: string }> = {
-  ganado: { nombre: 'Ya ganado al empezar el mes', Icono: CalendarCheck, color: 'var(--dinero-1)' },
+  ganado: { nombre: 'Cuotas mensuales', Icono: CalendarCheck, color: 'var(--dinero-1)' },
   vendido: { nombre: 'Vendido en el mes', Icono: HandCoins, color: 'var(--dinero-3)' },
 }
 

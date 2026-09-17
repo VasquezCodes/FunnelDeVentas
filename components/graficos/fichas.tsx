@@ -96,17 +96,17 @@ export interface Ficha {
   Icono?: LucideIcon
   /** Token CSS del real: la familia del indicador. */
   color: string
-  /** La cifra en su unidad: «103», «$64,380», «3.9 %». */
+  /** La cifra en su unidad: «103», «64.380 €», «3,9 %». */
   formatear: (valor: number) => string
   /**
    * Cómo se lee el plan junto a la cifra. Un volumen es parte de su plan
    * («de 145 del plan»); una tasa o un coste se comparan con él («frente a
-   * $32.19 del plan»): «$58.60 de $32.19» no querría decir nada.
+   * 32,19 € del plan»): «58,60 € de 32,19 €» no querría decir nada.
    */
   relacion: 'de' | 'frente'
   /** Un punto por periodo de la ventana, en el mismo orden. */
   puntos: PuntoFicha[]
-  /** Las cifras del eje en la ficha grande: «1.2 k», «40 %». Por defecto, compactas. */
+  /** Las cifras del eje en la ficha grande: «1,2 mil», «40 %». Por defecto, compactas. */
   formatearEje?: (valor: number) => string
   /** Clases de colocación en la rejilla ancha. */
   colocacion?: string
@@ -116,7 +116,7 @@ const PUNTO_VACIO: PuntoFicha = { plan: null, real: null, cumplimiento: null, es
 
 export { LARGO_VENTANA, ventanaDe } from '@/components/graficos/ventana'
 
-const FORMATO_EJE = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 })
+const FORMATO_EJE = new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 })
 const ejeCompacto = (valor: number) => FORMATO_EJE.format(valor)
 
 /** División que no devuelve Infinity, NaN ni un dato ausente. */

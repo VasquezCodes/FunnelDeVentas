@@ -316,7 +316,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               <dd
                 data-cifra={i}
                 // El cuerpo sigue al ancho de la cabecera (cqi), no al de la
-                // ventana: con el panel del mes al lado, «$101,082» tiene que
+                // ventana: con el panel del mes al lado, «101.082 €» tiene que
                 // caber en su columna. Nunca se parte.
                 className="font-display mt-2 self-end text-[clamp(1.375rem,2.2cqi,2rem)] leading-none font-semibold whitespace-nowrap tabular-nums"
                 style={{

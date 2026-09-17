@@ -30,7 +30,7 @@
 
 - **Dos pisos:**
   - Arriba, lo que no cambia: el título «Funnel de ventas» (Fraunces 600, de 2,25 a 3,5 rem, el cuerpo mayor de la página), la entradilla «Plan de negocio frente al resultado real» y la firma de marca (raya de carmín y filete).
-  - Abajo, cómo va el mes, en una fila de libro de cuentas: el mes encabeza la fila y le siguen Ingreso, Engaged leads, Ventas y Captación, cada cifra con su plan debajo («de $188,650 del plan»; la captación, «frente a $9,888 del plan»). Solo el ingreso lleva semáforo: es el veredicto del mes.
+  - Abajo, cómo va el mes, en una fila de libro de cuentas: el mes encabeza la fila y le siguen Ingreso, Engaged leads, Ventas y Captación, cada cifra con su plan debajo («de 188.650 € del plan»; la captación, «frente a 9.888 € del plan»). Solo el ingreso lleva semáforo: es el veredicto del mes.
 - **Rejilla:** cada cifra ocupa tres filas —etiqueta, cifra y plan— compartidas por `subgrid`, así las cifras quedan a la misma altura y el mes se sienta en su fila. Una sola fila desde 72 rem de contenedor; el mes encima y cuatro columnas desde 36 rem; dos por dos en móvil. Filetes finos entre cifras.
 - **Movimiento:** al cargar, el título sube por palabras y se traza la firma; el mes entra por letras y las cifras cuentan. Al cambiar de mes solo se repiten el mes y las cifras.
 - El `<title>` de la página es «Funnel de ventas».
@@ -46,7 +46,7 @@
   - `CabeceraHoja` lleva la leyenda a la izquierda y el mes elegido a la derecha.
   - `IconoEnPastilla` es el icono de Lucide en su pastilla.
 - **`components/graficos/fichas.tsx`:** las fichas del Embudo y los ayudantes compartidos: `ventanaDe`, `cociente`, `puntoCalculado`, `puntoDeComparativa`, `lecturaDe`, `mesEnFrase`, `indicesSueltos` y `HojaVacia`.
-- **Lectura de una cifra (`lecturaDe`):** «de 145 del plan» para volúmenes, «frente a $32.19 del plan» para tasas y costes, y «previsto en el plan, sin resultado» cuando no hay real. Si se lee un mes que no es el elegido, la frase lo nombra: «de 222 del plan en junio». La usan las fichas, los Canales, el Dinero y la cabecera.
+- **Lectura de una cifra (`lecturaDe`):** «de 145 del plan» para volúmenes, «frente a 32,19 € del plan» para tasas y costes, y «previsto en el plan, sin resultado» cuando no hay real. Si se lee un mes que no es el elegido, la frase lo nombra: «de 222 del plan en junio». La usan las fichas, los Canales, el Dinero y la cabecera.
 - **Datos:** `tablero.tsx` pasa `serie` (los periodos del grano elegido con sus comparativas) y `periodoId` a Embudo, Canales y Dinero. La Serie recibe `periodoId`.
 
 ## Embudo: fichas
@@ -71,14 +71,14 @@
   - Arriba, la barra del gasto repartida por canal; abajo, la de los leads.
   - Cada canal une sus dos tramos con una cinta de su color. Si la cinta se ensancha, el lead sale barato; si se estrecha, caro.
 - **Real y plan, sin dudas:**
-  - Cada barra se rotula a la izquierda («Gasto», «Leads») y su total, a la derecha, se dice real: «$11,382 real», con su semáforo. El gasto se juzga «menos es mejor».
-  - El plan es una cota discontinua con topes, encima de la barra del gasto y debajo de la de los leads, rotulada «Plan $9,330» y «Plan 130 leads». Una caída discontinua baja de la cota al extremo del plan.
+  - Cada barra se rotula a la izquierda («Gasto», «Leads») y su total, a la derecha, se dice real: «11.382 € real», con su semáforo. El gasto se juzga «menos es mejor».
+  - El plan es una cota discontinua con topes, encima de la barra del gasto y debajo de la de los leads, rotulada «Plan 9.330 €» y «Plan 130 leads». Una caída discontinua baja de la cota al extremo del plan.
   - Leyenda propia: la muestra de tres tonos es el real; la cota con topes, el plan.
   - Los totales son los de los tres canales, no los de la cabecera del mes, porque el plan tiene gasto y leads sin canal.
   - En una hoja estrecha, rótulo, total y semáforo van encima (gasto) o debajo (leads) de su barra.
 - **Tramos:** redondeados solo en los extremos de la barra, con 2 px de hueco. Dentro va lo que quepa del rótulo —icono, nombre e importe; icono e importe; o solo el icono— en `--canal-N-sobre`.
   - Iconos: `Megaphone`, `Radar` y `Handshake`.
-- **Celdas:** una por canal, con el coste por lead en grande, «frente a $X del plan», el semáforo, los leads del canal contra su plan («63 leads de 94 del plan») y «32 % del gasto → 68 % de los leads».
+- **Celdas:** una por canal, con el coste por lead en grande, «frente a X € del plan», el semáforo, los leads del canal contra su plan («63 leads de 94 del plan») y «32 % del gasto → 68 % de los leads».
 - **Resalte:** al pasar por un tramo, una cinta o una celda (o al enfocar la celda), los demás canales se apagan: al 20 % en el gráfico y al 45 % el contenido de las celdas. Hubo un detalle flotante con el gasto, los leads y el coste de cada canal; se quitó por «muy explotado de info», y los leads pasaron a la celda.
 - **Entrada:**
   1. Las cotas del plan se trazan de izquierda a derecha.
@@ -92,7 +92,7 @@
 - **La moneda:**
   - Canto acuñado (120 muescas en el gris de la regla), filo, surco del plan (aguada verde y discontinuo por su línea media) y cara con guilloché.
   - El real, partida a partida, es un anillo en el sentido de las agujas sobre el surco. El círculo entero es el plan: lo que el anillo no cubre es lo que falta. Si el real pasa del plan, el anillo se cierra y el exceso se dice debajo.
-  - En la cara: «Ingreso del mes», la cifra, «de $X del plan» y el semáforo. Debajo, con la marca del surco: «$24,525 faltan para el plan».
+  - En la cara: «Ingreso del mes», la cifra, «de X € del plan» y el semáforo. Debajo, con la marca del surco: «24.525 € faltan para el plan».
   - Rampa `--dinero-1` a `--dinero-5`, verdes validados en claro y en oscuro.
   - Las coordenadas de las muescas y del guilloché se redondean a centésimas: el seno y el coseno no dan el mismo último decimal en el servidor que en el navegador, y eso rompía la hidratación.
 - **El libro de cuentas:** un estado de resultados.

@@ -39,7 +39,7 @@ export function TarjetaKpi({ c, destacada = false, className }: TarjetaKpiProps)
 
   /**
    * El signo de la desviación NO decide el color: lo decide la dirección del
-   * indicador. En «coste por lead» (menor-mejor) un −$4 es una buena noticia
+   * indicador. En «coste por lead» (menor-mejor) un −4 € es una buena noticia
    * y pintarlo de rojo sería mentir con el color. Todo ese razonamiento vive
    * una sola vez, en `esDesviacionFavorable`.
    */

@@ -13,7 +13,7 @@
  * dinero, azul para la captación). El plan es una línea discontinua en gris
  * cálido que va por encima: es la referencia, y una referencia se lee como
  * un contorno, no como una masa. Como el área codifica magnitud desde el
- * suelo, el eje Y empieza en 0: un área que arranca en $150k mentiría sobre
+ * suelo, el eje Y empieza en 0: un área que arranca en 150 mil € mentiría sobre
  * cuánto hay. Es la misma forma que llevan las fichas de los otros paneles.
  *
  * ── La cabecera es la lectura ───────────────────────────────────────────
@@ -40,7 +40,7 @@
  * El gráfico cabe en el ancho de la tarjeta, sin scroll horizontal. Con 33
  * meses no caben 33 etiquetas, así que el eje X enseña una de cada 2, 3, 4,
  * 6 o 12 —ritmos de calendario— según el sitio que haya, y el eje Y va en
- * cifras compactas ($200k) para no comerse el trazado con ceros.
+ * cifras compactas (200 mil €) para no comerse el trazado con ceros.
  *
  * ── Color y juicio ──────────────────────────────────────────────────────
  * El color del área es identidad (la familia del indicador), nunca estado.
@@ -236,24 +236,25 @@ function escalaLimpia(maximo: number, maxDivisiones: number, entera: boolean) {
   return { tope, marcas }
 }
 
+const FORMATO_COMPACTO = new Intl.NumberFormat('es-ES', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
 /**
- * Cifra compacta para el eje Y: $200k, $1.5M, 40 %. Las marcas de la
+ * Cifra compacta para el eje Y: 200 mil €, 1,5 M €, 40 %. Las marcas de la
  * escala son múltiplos redondos, así que un decimal basta y solo aparece
- * cuando hace falta (250k no lleva; 1.5M sí). El signo menos es el
+ * cuando hace falta (250 mil no lleva; 1,5 M sí). El signo menos es el
  * tipográfico, como en el resto del tablero.
  */
 function formatearCompacto(valor: number, unidad: Unidad): string {
   if (unidad === 'porcentaje') {
     return Number.isInteger(valor) ? `${valor} %` : formatearValor(valor, unidad)
   }
-  const magnitud = Math.abs(valor)
-  if (magnitud < 1000) return formatearValor(valor, unidad)
+  if (Math.abs(valor) < 1000) return formatearValor(valor, unidad)
 
-  const signo = valor < 0 ? '−' : ''
-  const prefijo = unidad === 'moneda' ? '$' : ''
-  const [divisor, sufijo] = magnitud >= 1e6 ? [1e6, 'M'] : [1e3, 'k']
-  const cifra = Math.round((magnitud / divisor) * 10) / 10
-  return `${signo}${prefijo}${cifra}${sufijo}`
+  const cifra = FORMATO_COMPACTO.format(valor).replace(/-/g, '−')
+  return unidad === 'moneda' ? `${cifra} €` : cifra
 }
 
 /**

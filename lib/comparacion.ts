@@ -74,58 +74,65 @@ function conMenosTipografico(texto: string): string {
 
 // ── Formateadores (memorizados: crear un Intl.NumberFormat es caro) ─────
 
-const FORMATO_CANTIDAD = new Intl.NumberFormat('es-MX', {
+/**
+ * Formato español: punto de miles, coma decimal y el euro detrás
+ * («18.500 €»). Los miles se agrupan siempre: por defecto es-ES deja sin
+ * punto las cifras de cuatro dígitos, y en un tablero «5868 €» junto a
+ * «18.500 €» parece otro formato.
+ */
+function formato(opciones: Intl.NumberFormatOptions): Intl.NumberFormat {
+  return new Intl.NumberFormat('es-ES', { useGrouping: 'always', ...opciones })
+}
+
+const FORMATO_CANTIDAD = formato({
   maximumFractionDigits: 0,
 })
 
-const FORMATO_MONEDA = new Intl.NumberFormat('es-MX', {
+const FORMATO_MONEDA = formato({
   style: 'currency',
-  currency: 'USD',
-  currencyDisplay: 'narrowSymbol',
+  currency: 'EUR',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 })
 
-const FORMATO_DECIMAL_1 = new Intl.NumberFormat('es-MX', {
+const FORMATO_DECIMAL_1 = formato({
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 })
 
-const FORMATO_ENTERO = new Intl.NumberFormat('es-MX', {
+const FORMATO_ENTERO = formato({
   maximumFractionDigits: 0,
 })
 
 /** Dinero con céntimos, para costes unitarios. */
-const FORMATO_COSTE = new Intl.NumberFormat('es-MX', {
+const FORMATO_COSTE = formato({
   style: 'currency',
-  currency: 'USD',
-  currencyDisplay: 'narrowSymbol',
+  currency: 'EUR',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })
 
-/** Un coste unitario, con céntimos: un coste por lead de $20.41 no es $20. */
+/** Un coste unitario, con céntimos: un coste por lead de 20,41 € no es 20 €. */
 export function formatearCoste(valor: number | null): string {
   if (valor === null || !Number.isFinite(valor)) return SIN_DATO
   return conMenosTipografico(FORMATO_COSTE.format(valor))
 }
 
 /** Variantes con signo explícito. El cero se queda sin signo: «+0» no informa. */
-const FORMATO_CANTIDAD_CON_SIGNO = new Intl.NumberFormat('es-MX', {
+const FORMATO_CANTIDAD_CON_SIGNO = formato({
   maximumFractionDigits: 0,
   signDisplay: 'exceptZero',
 })
 
-const FORMATO_MONEDA_CON_SIGNO = new Intl.NumberFormat('es-MX', {
+const FORMATO_MONEDA_CON_SIGNO = formato({
   style: 'currency',
-  currency: 'USD',
-  currencyDisplay: 'narrowSymbol',
+  currency: 'EUR',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
   signDisplay: 'exceptZero',
 })
 
-const FORMATO_DECIMAL_1_CON_SIGNO = new Intl.NumberFormat('es-MX', {
+const FORMATO_DECIMAL_1_CON_SIGNO = formato({
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
   signDisplay: 'exceptZero',
@@ -134,9 +141,9 @@ const FORMATO_DECIMAL_1_CON_SIGNO = new Intl.NumberFormat('es-MX', {
 /**
  * Formatea el valor de un indicador según su unidad.
  *
- *   cantidad    →  '1,240'
- *   moneda      →  '$18,500'   (USD, sin decimales: son cifras de plan)
- *   porcentaje  →  '42.0 %'
+ *   cantidad    →  '1.240'
+ *   moneda      →  '18.500 €'  (euros, sin decimales: son cifras de plan)
+ *   porcentaje  →  '42,0 %'
  *
  * Convención de la unidad 'porcentaje': el valor viaja en puntos
  * porcentuales (42 significa 42 %), no como fracción. Los ratios
@@ -170,7 +177,7 @@ export function formatearCumplimiento(c: number | null): string {
 
 /**
  * Formatea la desviación (real − meta) con signo explícito.
- * El signo es la información principal: '+320', '−$4,000', '−2.5 %'.
+ * El signo es la información principal: '+320', '−4.000 €', '−2,5 %'.
  * El cero se muestra sin signo, porque «+0» sugiere una mejora que no existe.
  */
 export function formatearDesviacion(d: number | null, unidad: Unidad): string {
@@ -188,8 +195,8 @@ export function formatearDesviacion(d: number | null, unidad: Unidad): string {
 }
 
 /**
- * Formatea una tasa de conversión (fracción 0–1) con un decimal: 0.342 → '34.2 %'.
- * Aquí sí hace falta el decimal: entre 34 % y 34.8 % hay dinero de por medio.
+ * Formatea una tasa de conversión (fracción 0–1) con un decimal: 0.342 → '34,2 %'.
+ * Aquí sí hace falta el decimal: entre 34 % y 34,8 % hay dinero de por medio.
  */
 export function formatearTasaConversion(tasa: number | null): string {
   if (tasa === null || !Number.isFinite(tasa)) return SIN_DATO

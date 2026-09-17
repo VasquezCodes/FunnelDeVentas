@@ -33,12 +33,15 @@ export function aNumero(texto: string): number | null {
   return Number.isFinite(valor) && valor >= 0 ? valor : null
 }
 
-/** Lo guardado → borrador editable, solo con las casillas del plan (`idsCapturables`). */
+/**
+ * Lo guardado → borrador editable, solo con las casillas del plan (`idsCapturables`).
+ * Con coma decimal, como el resto del tablero: «20,41», no «20.41».
+ */
 export function aBorrador(reales: readonly Real[], capturables: ReadonlySet<string>): Borrador {
   const borrador: Borrador = {}
   for (const real of reales) {
     if (!capturables.has(real.indicadorId)) continue
-    borrador[real.indicadorId] = Number.isFinite(real.valor) ? String(real.valor) : ''
+    borrador[real.indicadorId] = Number.isFinite(real.valor) ? String(real.valor).replace('.', ',') : ''
   }
   return borrador
 }

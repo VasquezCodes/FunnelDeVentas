@@ -17,7 +17,7 @@
  *   · cada fila dice qué es («Gasto», «Leads») y su cifra real, al lado;
  *   · el plan de cada barra es una cota, como en un plano: una línea
  *     discontinua con topes que va del inicio hasta donde llega el plan,
- *     por fuera de la barra y rotulada «Plan $7,080»; una caída discontinua
+ *     por fuera de la barra y rotulada «Plan 7.080 €»; una caída discontinua
  *     marca ese punto sobre la barra. Si la barra pasa la caída, se gastó
  *     de más; si no llega, faltaron leads.
  * Las dos barras se miden con la misma vara (el 100 % de su plan ocupa lo
@@ -144,7 +144,7 @@ const APAGADO_CELDA = 0.45
 
 // ── Formatos ────────────────────────────────────────────────────────────
 
-/** Dinero con céntimos: un coste por lead de $20.41 no es $20. */
+/** Dinero con céntimos: un coste por lead de 20,41 € no es 20 €. */
 const coste = (valor: number) => formatearCoste(valor)
 
 const dinero = (n: number) => formatearValor(n, 'moneda')
@@ -690,7 +690,7 @@ function EtiquetaBarra({ y, Icono, texto }: { y: number; Icono: LucideIcon; text
 }
 
 /**
- * La cifra real de la barra, a su derecha, dicha como real («$8,071 real»)
+ * La cifra real de la barra, a su derecha, dicha como real («8.071 € real»)
  * para que no quepa duda de que la barra es el real, y su juicio contra el
  * plan. Cuenta en la entrada (`data-total`).
  */

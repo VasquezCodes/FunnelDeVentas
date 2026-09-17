@@ -1273,14 +1273,6 @@ function Casilla({
 }) {
   return (
     <div className="relative">
-      {unidad === 'moneda' && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground"
-        >
-          $
-        </span>
-      )}
       <input
         id={id}
         aria-label={etiqueta}
@@ -1301,20 +1293,20 @@ function Casilla({
           'h-9 w-full min-w-0 rounded-md border bg-card px-3 text-right text-sm text-foreground tabular-nums outline-none',
           'border-(--regla) transition-[border-color,box-shadow] duration-150',
           'hover:border-[color-mix(in_oklab,var(--foreground)_35%,transparent)]',
-          unidad === 'moneda' && 'pl-6',
-          unidad === 'porcentaje' && 'pr-7',
+          unidad !== 'cantidad' && 'pr-7',
           // Cambiado y aún sin guardar: borde y fondo de marca muy suaves.
           cambiado &&
             'border-[color-mix(in_oklab,var(--brand)_55%,transparent)] bg-[color-mix(in_oklab,var(--brand)_4%,var(--card))]',
           'focus:border-brand focus:ring-3 focus:ring-[color-mix(in_oklab,var(--brand)_18%,transparent)]',
         )}
       />
-      {unidad === 'porcentaje' && (
+      {/* La unidad va detrás de la cifra, como se escribe en español: «18.500 €», «42 %». */}
+      {unidad !== 'cantidad' && (
         <span
           aria-hidden="true"
           className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground"
         >
-          %
+          {unidad === 'moneda' ? '€' : '%'}
         </span>
       )}
     </div>

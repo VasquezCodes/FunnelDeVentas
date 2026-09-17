@@ -1599,7 +1599,7 @@ function Casilla({
             aria-hidden="true"
             className="cifra pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
           >
-            $
+            €
           </span>
         )}
         {unidad === 'porcentaje' && (

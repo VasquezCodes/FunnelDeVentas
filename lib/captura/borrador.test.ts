@@ -31,6 +31,12 @@ describe('aBorrador', () => {
     })
   })
 
+  it('los decimales se editan con coma', () => {
+    expect(aBorrador([real('captacion.publicidad', 20.41)], new Set(['captacion.publicidad']))).toEqual({
+      'captacion.publicidad': '20,41',
+    })
+  })
+
   it('con Discoveries por canal, la cifra de Discoveries ya no es una casilla', () => {
     const reales = [real('discoveries', 12), real('discoveries.publicidad', 7)]
     expect(aBorrador(reales, new Set(['discoveries.publicidad']))).toEqual({

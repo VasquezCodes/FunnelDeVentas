@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { limpiarEnlace } from '@/lib/plan/enlace-valido'
 import { cn } from '@/lib/utils'
 
-const FECHA = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+const FECHA = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export interface PlanDeNegocioProps {
   /** Nombre del libro en uso: «Plan de Negocio 0426.xlsm». */

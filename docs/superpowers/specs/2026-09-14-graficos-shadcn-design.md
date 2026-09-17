@@ -92,7 +92,7 @@
 
 - **Cabecera:**
   - El selector de indicador (el `Select` existente).
-  - La cifra clave: el valor del último mes con dato, con «de $X del plan, Y %».
+  - La cifra clave: el valor del último mes con dato, con «de X € del plan, Y %».
   - La `EtiquetaEstado` de ese mes.
 - **Gráfico:** `AreaChart` con `type="monotone"`.
   - **Real:** trazo de 2 px en el color de la métrica y relleno con `linearGradient` del mismo color, de un 28 % de opacidad arriba a un 0 % abajo.
@@ -100,7 +100,7 @@
   - **Punto final:** solo en el último real, de 8 px, con anillo del color de la tarjeta.
   - **Meses futuros:** solo el plan; los huecos no se interpolan (`connectNulls={false}`).
 - **Ejes:**
-  - Eje Y con valores compactos ($200k).
+  - Eje Y con valores compactos (200 mil €).
   - Eje X con `etiquetaCorta` («Sep 2026»), sin pisarse; hay que espaciar las etiquetas en móvil.
   - Rejilla horizontal sólida.
   - El gráfico cabe en el ancho de la tarjeta, sin scroll horizontal.
@@ -132,7 +132,7 @@
 
 ### Canales (`components/canales.tsx`)
 
-- **Cabecera:** la cifra clave es el peor coste por lead («$58.60 por lead en Publicidad; plan $32.19»), con su estado. Se usan las filas de `lib/canales.ts`.
+- **Cabecera:** la cifra clave es el peor coste por lead («58,60 € por lead en Publicidad; plan 32,19 €»), con su estado. Se usan las filas de `lib/canales.ts`.
 - **Gráfico:** una barra redondeada tipo píldora por canal (Publicidad, Prospección, Referidos), de unos 34 px de alto.
   - El largo es proporcional a los **leads reales**, con escala compartida.
   - Va sobre una pista clara que llega hasta los **leads del plan**, con una raya de 2 px que marca la meta.
@@ -141,7 +141,7 @@
   - A la derecha, «63 de 94 leads».
 - **Al lado, o debajo en móvil, una lista de tres filas al estilo del Chart 6:**
   - Punto del color del canal y nombre.
-  - El coste por lead real en grande, «plan $32.19» en pequeño y el gasto real.
+  - El coste por lead real en grande, «plan 32,19 €» en pequeño y el gasto real.
   - La `EtiquetaEstado` del coste.
 - **Se elimina el pie de texto** que decía que el plan reserva cuatro canales más y no les asigna nada en 33 meses: es falso y el usuario quiere menos texto.
 - **Entrada:** las píldoras crecen desde la izquierda con el nombre apareciendo, las rayas de meta se dibujan con DrawSVG y las cifras cuentan.
