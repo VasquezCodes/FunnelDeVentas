@@ -76,7 +76,7 @@ const leerDelOrigen = async (url: string): Promise<PlanEnCache> => {
 const obtenerPlan = cache(async (): Promise<PlanEnCache> => {
   const { url, version } = await enlaceDelPlan()
   const huella = createHash('sha256').update(`${url}|${version}`).digest('hex').slice(0, 24)
-  return cachearLecturaDelPlan(`plan-de-ventas-discoveries-por-canal:${huella}`, () => leerDelOrigen(url))()
+  return cachearLecturaDelPlan(`plan-de-ventas-tasas-previas-y-multiplicadores:${huella}`, () => leerDelOrigen(url))()
 })
 
 /**

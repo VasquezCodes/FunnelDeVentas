@@ -241,8 +241,15 @@ export interface TasaDelPlan {
   desde: string
   /** Id del indicador de destino. */
   hacia: string
-  /** Fracción (0.6 = 60 %). null si el libro no trae el dato. */
+  /** Fracción (0.6 = 60 %) o multiplicador (30), según `forma`. null si el libro no trae el dato. */
   plan: number | null
+  /**
+   * Cómo se lee la cifra. Casi todas las tasas del plan son una fracción de
+   * lo que pasa a la etapa siguiente, pero tres no: de una reactivación
+   * salen 30 contactos, y de un contenido largo, 500 visitas. Son
+   * multiplicadores, y escribirlos en porcentaje daría «3.000 %».
+   */
+  forma?: 'fraccion' | 'multiplicador'
   /** El canal, si la tasa es de un canal. */
   canal?: Canal
 }

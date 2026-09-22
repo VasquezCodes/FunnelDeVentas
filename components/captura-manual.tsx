@@ -87,7 +87,7 @@ import { toast } from 'sonner'
 
 import type { Canal, Indicador, Meta, Periodo, Real, TasaDelPlan, Unidad } from '@/lib/tipos'
 import { NOMBRE_CANAL, colorDeCanal } from '@/lib/tipos'
-import { formatearTasaConversion, formatearValor } from '@/lib/comparacion'
+import { formatearMultiplicador, formatearTasaConversion, formatearValor } from '@/lib/comparacion'
 import { costePorMil, tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
 import { bloquesDe, bloquesPorCanalDe, type BloqueCaptura } from '@/lib/captura/bloques'
@@ -215,7 +215,13 @@ const cifra = (valor: number | null, unidad: Unidad) =>
   valor === null ? '' : formatearValor(valor, unidad)
 
 /** Una tasa, o nada si no la hay. */
-const porcentaje = (tasa: number | null) => (tasa === null ? '' : formatearTasaConversion(tasa))
+/**
+ * Cómo se escribe una tasa: casi todas son una fracción, pero tres del plan
+ * son multiplicadores —30 contactos por reactivación— y en porcentaje
+ * dirían «3.000 %».
+ */
+const cifraTasa = (tasa: TasaDelPlan, valor: number | null) =>
+  valor === null ? '' : tasa.forma === 'multiplicador' ? formatearMultiplicador(valor) : formatearTasaConversion(valor)
 
 /** Las dos filas de las que sale el CPM. Ver `bandaCpm`. */
 const ID_INVERSION = 'publicidad-inversion'
@@ -806,10 +812,20 @@ export function CapturaManual({
     filas: readonly Indicador[],
     tasasDelGrupo: readonly TasaDelPlan[],
   ) {
+    // Una tasa va justo DESPUÉS de la primera de las dos filas que une, sea
+    // cual sea el orden en que estén. Es lo que la deja en medio de las dos
+    // sin tener que saber cuál va antes: en Publicidad el Link CTR une
+    // impresiones con clics y cae entre ellas; en Referidos, la de
+    // «contactos por reactivación» une las dos filas del canal y cae entre
+    // ellas aunque el multiplicador vaya de la segunda a la primera.
+    const posicion = (id: string) => filas.findIndex((i) => i.id === id)
+    const entreFilas = (t: TasaDelPlan) => posicion(t.desde) >= 0 && posicion(t.hacia) >= 0
+    const primeraDe = (t: TasaDelPlan) => filas[Math.min(posicion(t.desde), posicion(t.hacia))]
+
     return (
       <>
         {filas.map((indicador) => {
-          const tasa = tasasDelGrupo.find((t) => t.desde === indicador.id)
+          const tasa = tasasDelGrupo.find((t) => entreFilas(t) && primeraDe(t)?.id === indicador.id)
           return (
             <Fragment key={indicador.id}>
               {fila(bloque, indicador)}
@@ -820,11 +836,9 @@ export function CapturaManual({
             </Fragment>
           )
         })}
-        {/* Una tasa cuyo origen no es ninguna de las filas de arriba se
-            quedaría sin pintar: va detrás, que es mejor que perderla. */}
-        {tasasDelGrupo
-          .filter((t) => !filas.some((i) => i.id === t.desde))
-          .map((tasa) => bandaTasa(tasa))}
+        {/* Las que salen del grupo —a los leads del canal— cierran la cadena.
+            Una tasa sin las dos filas aquí se quedaría sin pintar. */}
+        {tasasDelGrupo.filter((t) => !entreFilas(t)).map((tasa) => bandaTasa(tasa))}
       </>
     )
   }
@@ -952,16 +966,16 @@ export function CapturaManual({
               esMes ? 'text-muted-foreground' : 'font-medium text-foreground',
             )}
           >
-            {porcentaje(real(q))}
+            {cifraTasa(tasa, real(q))}
           </span>
         ))}
         {esMes && (
           <span className="text-right text-sm font-medium text-foreground tabular-nums">
-            {porcentaje(tasaReal(realDelMes(tasa.desde), realDelMes(tasa.hacia)))}
+            {cifraTasa(tasa, tasaReal(realDelMes(tasa.desde), realDelMes(tasa.hacia)))}
           </span>
         )}
         <span className="text-right text-sm text-muted-foreground tabular-nums">
-          {porcentaje(tasa.plan)}
+          {cifraTasa(tasa, tasa.plan)}
         </span>
       </>
     )

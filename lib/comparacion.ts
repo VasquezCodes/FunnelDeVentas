@@ -204,6 +204,19 @@ export function formatearTasaConversion(tasa: number | null): string {
   return conMenosTipografico(FORMATO_DECIMAL_1.format(tasa * 100)) + ESPACIO_DURO + '%'
 }
 
+/**
+ * Un multiplicador del plan: «×30» son treinta contactos por cada
+ * reactivación. No es un porcentaje y no se escribe como tal; el signo de
+ * multiplicar delante evita leerlo como una cantidad suelta.
+ */
+export function formatearMultiplicador(valor: number | null): string {
+  if (valor === null || !Number.isFinite(valor)) return SIN_DATO
+  const cifra = Number.isInteger(valor)
+    ? FORMATO_ENTERO.format(valor)
+    : FORMATO_DECIMAL_1.format(valor)
+  return '×' + conMenosTipografico(cifra)
+}
+
 // ── Semáforo ────────────────────────────────────────────────────────────
 
 /**

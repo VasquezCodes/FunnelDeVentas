@@ -7,6 +7,10 @@
  * esas hipótesis a sus dos indicadores, para poder ponerle al lado la tasa
  * real.
  *
+ * No todas son una fracción. Tres son multiplicadores —de una reactivación
+ * salen 30 contactos (50 en afiliados) y de un contenido largo, 500 visitas—
+ * y van marcadas con `forma`, porque escritas en porcentaje dirían «3.000 %».
+ *
  * Solo entran las tasas que el Excel tiene como tales en la hoja
  * «Variables». Hubo una «de llamada a venta» por canal, calculada aquí como
  * cualificación × propuestas × cierre; el usuario la quitó: si no está en el
@@ -22,6 +26,7 @@ interface DefTasa {
   desde: string
   hacia: string
   canal?: Canal
+  forma?: 'fraccion' | 'multiplicador'
 }
 
 const CANALES: Canal[] = [
@@ -73,8 +78,11 @@ const DEFINICIONES: DefTasa[] = [
   { definido: 'CVR_LinkCTR', nombre: 'Link CTR', desde: 'publicidad-impresiones', hacia: 'publicidad-clicks', canal: 'publicidad' },
   { definido: 'CVR_Publicidad', nombre: 'CVR Publicidad', desde: 'publicidad-clicks', hacia: 'eleads.publicidad', canal: 'publicidad' },
   { definido: 'CVR_Prospección', nombre: 'CVR Prospección', desde: 'prospeccion-contactos', hacia: 'eleads.prospeccion', canal: 'prospeccion' },
+  { definido: 'CVR_Referidos_Reactiv', nombre: 'Nº de contactos por reactivación', desde: 'referidos-reactivaciones', hacia: 'referidos-contactos', canal: 'referidos', forma: 'multiplicador' },
   { definido: 'CVR_Referidos', nombre: 'CVR Referidos', desde: 'referidos-contactos', hacia: 'eleads.referidos', canal: 'referidos' },
+  { definido: 'CVR_Afiliados_Reactiv', nombre: 'Nº de contactos por reactivación', desde: 'afiliados-reactivaciones', hacia: 'afiliados-contactos', canal: 'afiliados', forma: 'multiplicador' },
   { definido: 'CVR_Afiliados', nombre: 'CVR Afiliados', desde: 'afiliados-contactos', hacia: 'eleads.afiliados', canal: 'afiliados' },
+  { definido: 'CVR_VisitasContenidoLargo', nombre: 'Nº de visitas por contenido largo', desde: 'contenido-creacion', hacia: 'contenido-visitas', canal: 'contenido', forma: 'multiplicador' },
   { definido: 'CVR_Contenido', nombre: 'CVR Contenido', desde: 'contenido-visitas', hacia: 'eleads.contenido', canal: 'contenido' },
   { definido: 'CVR_Apertura', nombre: 'CVR Apertura', desde: 'newsletter-envios', hacia: 'newsletter-aperturas', canal: 'newsletter' },
   { definido: 'CVR_Newsletter', nombre: 'CVR Newsletter', desde: 'newsletter-aperturas', hacia: 'eleads.newsletter', canal: 'newsletter' },
@@ -100,6 +108,7 @@ export function construirTasas(valores: ReadonlyMap<string, number>): {
       hacia: def.hacia,
       plan: valores.get(def.definido) ?? null,
       ...(def.canal ? { canal: def.canal } : {}),
+      ...(def.forma ? { forma: def.forma } : {}),
     }),
   )
   const faltan = [...NOMBRES_DE_TASAS].filter((n) => !valores.has(n))

@@ -12,8 +12,13 @@ const DEL_LIBRO = new Map<string, number>([
   ['CVR_Publicidad', 0.1],
   ['CVR_Prospección', 0.06],
   ['CVR_Referidos', 0.2],
+  // Multiplicadores, no fracciones: de una reactivación salen 30 contactos,
+  // 50 en afiliados, y de un contenido largo, 500 visitas.
+  ['CVR_Referidos_Reactiv', 30],
   ['CVR_Afiliados', 0.2],
+  ['CVR_Afiliados_Reactiv', 50],
   ['CVR_Contenido', 0.02],
+  ['CVR_VisitasContenidoLargo', 500],
   ['CVR_Apertura', 0.5],
   ['CVR_Newsletter', 0.02],
 ])
@@ -66,5 +71,24 @@ describe('construirTasas', () => {
 
   it('declara todos los nombres que necesita', () => {
     expect([...NOMBRES_DE_TASAS].sort()).toEqual([...DEL_LIBRO.keys()].sort())
+  })
+})
+
+describe('tasas que no son un porcentaje', () => {
+  it('las tres multiplicadoras se marcan como tales', () => {
+    for (const [desde, hacia, plan] of [
+      ['referidos-reactivaciones', 'referidos-contactos', 30],
+      ['afiliados-reactivaciones', 'afiliados-contactos', 50],
+      ['contenido-creacion', 'contenido-visitas', 500],
+    ] as const) {
+      const tasa = buscar(desde, hacia)
+      expect(tasa?.plan).toBe(plan)
+      expect(tasa?.forma).toBe('multiplicador')
+    }
+  })
+
+  it('las demás no llevan forma: una fracción es lo normal', () => {
+    expect(buscar('referidos-contactos', 'eleads.referidos')?.forma).toBeUndefined()
+    expect(buscar('eleads', 'llamadas')?.forma).toBeUndefined()
   })
 })
