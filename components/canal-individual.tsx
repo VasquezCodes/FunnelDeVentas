@@ -86,13 +86,16 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
     'menor-mejor',
   )
 
-  // La cadena: las variables previas del canal y, detrás, su embudo. Las
-  // discoveries, solo si el libro las reparte por canal.
+  // La cadena: las variables previas del canal y, detrás, su embudo entero.
+  // Discoveries y Propuestas solo salen si el libro las reparte por canal;
+  // el filtro las quita cuando ese plan no las trae, y con ellas se van sus
+  // tasas, sin dejar un hueco.
   const pasos = [
     ...PREVIAS[canal],
     { id: `eleads.${canal}`, nombre: 'Leads' },
     { id: `llamadas.${canal}`, nombre: 'Llamadas' },
     { id: `discoveries.${canal}`, nombre: 'Discoveries' },
+    { id: `propuestas.${canal}`, nombre: 'Propuestas' },
     { id: `ventas.${canal}`, nombre: 'Ventas' },
   ].filter((p) => buscar(p.id) !== undefined)
 
@@ -130,8 +133,8 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
                     punto={punto(paso.id)}
                     formatear={paso.dinero ? dinero : cantidad}
                   />
-                  {/* Sin tasa en el Excel (hacia ventas no la hay por canal),
-                      la flecha va sola: no se inventa una cifra. */}
+                  {/* Sin tasa en el Excel para ese paso, la flecha va sola:
+                      no se inventa una cifra. */}
                   {siguiente && (
                     <Flecha
                       tasa={
