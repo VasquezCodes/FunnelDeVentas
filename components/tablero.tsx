@@ -12,7 +12,7 @@
  * consulta de una cosa cada vez.
  *
  * ── El orden del carrusel es un argumento ────────────────────────────────
- * Embudo → Canales → Dinero → Serie. Es la secuencia en que alguien
+ * Embudo → Canales → Ingresos → Histórico. Es la secuencia en que alguien
  * investiga un mes malo: dónde se rompió, por qué, qué costó, y si viene
  * pasando. No es un orden alfabético ni estético.
  */
@@ -329,7 +329,7 @@ export function Tablero({
       id: 'embudo',
       clave: 'Embudo',
       icono: FunnelIcon,
-      titulo: 'Dónde se estrecha',
+      titulo: 'Comparativa mes a mes',
       glosa: 'Cada etapa contra su plan, mes a mes.',
       avisa: embudoAvisa,
       contenido: <Embudo serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
@@ -347,7 +347,7 @@ export function Tablero({
     },
     {
       id: 'dinero',
-      clave: 'Dinero',
+      clave: 'Ingresos',
       icono: CoinsIcon,
       titulo: 'De qué depende el ingreso',
       glosa: 'Cuánto del mes estaba ganado de antemano y cuánto hubo que vender.',
@@ -356,7 +356,7 @@ export function Tablero({
     },
     {
       id: 'serie',
-      clave: 'Serie',
+      clave: 'Histórico',
       icono: ChartLineIcon,
       titulo: 'Si es un mal mes o una tendencia',
       glosa:
