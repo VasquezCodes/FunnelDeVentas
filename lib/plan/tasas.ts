@@ -44,25 +44,29 @@ const DEFINICIONES: DefTasa[] = [
   // ── Las mismas tasas, canal a canal ──────────────────────────────────
   // Donde el Excel reparte por canal las dos etapas, la tasa del plan es la
   // misma en cada canal: los leads de Publicidad × 60 % son las llamadas de
-  // Publicidad. La cualificación solo en los libros que reparten Discoveries
-  // (desde el 0726); Propuestas no se reparte, y detrás no hay más.
-  ...CANALES.map(
-    (canal): DefTasa => ({
-      definido: 'CVR_Llamada',
-      nombre: 'Tasa de conversión a llamada',
-      desde: `eleads.${canal}`,
-      hacia: `llamadas.${canal}`,
-      canal,
-    }),
-  ),
-  ...CANALES.map(
-    (canal): DefTasa => ({
-      definido: 'CVR_Cualificación',
-      nombre: 'Tasa de cualificación',
-      desde: `llamadas.${canal}`,
-      hacia: `discoveries.${canal}`,
-      canal,
-    }),
+  // Publicidad.
+  //
+  // Se declaran las cuatro etapas. Que una salga o no depende del libro: las
+  // tasas se filtran por los indicadores que ese plan trae, así que en un
+  // libro que no reparta Discoveries —o Propuestas— sus tasas de canal
+  // sencillamente no existen y la fila no se despliega.
+  ...(
+    [
+      ['CVR_Llamada', 'Tasa de conversión a llamada', 'eleads', 'llamadas'],
+      ['CVR_Cualificación', 'Tasa de cualificación', 'llamadas', 'discoveries'],
+      ['CVR_Propuestas', 'Tasa de propuestas', 'discoveries', 'propuestas'],
+      ['CVR_Cierre', 'Tasa de cierre', 'propuestas', 'ventas'],
+    ] as const
+  ).flatMap(([definido, nombre, desde, hacia]) =>
+    CANALES.map(
+      (canal): DefTasa => ({
+        definido,
+        nombre,
+        desde: `${desde}.${canal}`,
+        hacia: `${hacia}.${canal}`,
+        canal,
+      }),
+    ),
   ),
 
   // ── Variables previas: de la materia prima de cada canal a sus leads ──

@@ -88,7 +88,7 @@ import { toast } from 'sonner'
 import type { Canal, Indicador, Meta, Periodo, Real, TasaDelPlan, Unidad } from '@/lib/tipos'
 import { NOMBRE_CANAL, colorDeCanal } from '@/lib/tipos'
 import { formatearTasaConversion, formatearValor } from '@/lib/comparacion'
-import { tasaEntre, tasaReal } from '@/lib/tasas'
+import { costePorMil, tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
 import { bloquesDe, bloquesPorCanalDe, type BloqueCaptura } from '@/lib/captura/bloques'
 import { completarTotales } from '@/lib/captura/totales'
@@ -216,21 +216,26 @@ const cifra = (valor: number | null, unidad: Unidad) =>
 /** Una tasa, o nada si no la hay. */
 const porcentaje = (tasa: number | null) => (tasa === null ? '' : formatearTasaConversion(tasa))
 
+/** Las dos filas de las que sale el CPM. Ver `bandaCpm`. */
+const ID_INVERSION = 'publicidad-inversion'
+const ID_IMPRESIONES = 'publicidad-impresiones'
+
 /**
  * Las tasas que van entre un bloque de etapa y el siguiente. `porCanal`: se
  * despliega canal a canal (solo donde el plan reparte las dos etapas).
  */
 const TASAS_TRAS_BLOQUE: Record<string, Array<{ desde: string; hacia: string; porCanal: boolean }>> = {
   eleads: [{ desde: 'eleads', hacia: 'llamadas', porCanal: true }],
-  // Por canal solo si el libro reparte Discoveries: si no, no hay tasas de
-  // canal para este paso y la fila no se despliega.
+  //  en todas: el desplegable aparece solo si el libro reparte por
+  // canal las dos etapas del paso. Si no, no hay tasas de canal que enseñar y
+  // la fila se queda como una banda simple.
   llamadas: [{ desde: 'llamadas', hacia: 'discoveries', porCanal: true }],
   'discoveries-propuestas': [
-    { desde: 'discoveries', hacia: 'propuestas', porCanal: false },
-    { desde: 'propuestas', hacia: 'ventas', porCanal: false },
+    { desde: 'discoveries', hacia: 'propuestas', porCanal: true },
+    { desde: 'propuestas', hacia: 'ventas', porCanal: true },
   ],
-  discoveries: [{ desde: 'discoveries', hacia: 'propuestas', porCanal: false }],
-  propuestas: [{ desde: 'propuestas', hacia: 'ventas', porCanal: false }],
+  discoveries: [{ desde: 'discoveries', hacia: 'propuestas', porCanal: true }],
+  propuestas: [{ desde: 'propuestas', hacia: 'ventas', porCanal: true }],
 }
 
 /**
@@ -676,6 +681,53 @@ export function CapturaManual({
     )
   }
 
+  /**
+   * El CPM, en su banda, entre la inversión y las impresiones.
+   *
+   * No sale de la hoja «Variables» como las demás tasas: es un precio que se
+   * deriva de dos filas que ya están en la tabla, justo las dos entre las que
+   * va. Por eso no es un `TasaDelPlan` y necesita su propia banda: va en
+   * euros y no en porcentaje.
+   */
+  function bandaCpm() {
+    const cpm = (q: Quincena) =>
+      costePorMil(conTotales[q][ID_INVERSION] ?? null, conTotales[q][ID_IMPRESIONES] ?? null)
+    const planMes = (id: string) => {
+      const m1 = metaDe.q1.get(id) ?? null
+      const m2 = metaDe.q2.get(id) ?? null
+      return m1 === null && m2 === null ? null : (m1 ?? 0) + (m2 ?? 0)
+    }
+    const delPlan = costePorMil(planMes(ID_INVERSION), planMes(ID_IMPRESIONES))
+    const enEuros = (valor: number | null) => (valor === null ? '' : formatearValor(valor, 'moneda'))
+
+    return (
+      <div
+        key="cpm"
+        data-tasa="cpm"
+        className={cn(claseRejilla, '-mx-3 my-1 mb-1 rounded-lg py-2 pr-3 pl-4', BANDA_TASA)}
+      >
+        <NombreTasa texto="CPM" Icono={Banknote} />
+        {quincenasAMostrar.map((q) => (
+          <span
+            key={q}
+            className={cn(
+              'pr-3 text-right text-sm tabular-nums',
+              esMes ? 'text-muted-foreground' : 'font-medium text-foreground',
+            )}
+          >
+            {enEuros(cpm(q))}
+          </span>
+        ))}
+        {esMes && (
+          <span className="text-right text-sm font-medium text-foreground tabular-nums">
+            {enEuros(costePorMil(realDelMes(ID_INVERSION), realDelMes(ID_IMPRESIONES)))}
+          </span>
+        )}
+        <span className="text-right text-sm text-muted-foreground tabular-nums">{enEuros(delPlan)}</span>
+      </div>
+    )
+  }
+
   /** Una tasa en su banda, entre las filas que se teclean. */
   function bandaTasa(tasa: TasaDelPlan, clase = 'mb-1') {
     return (
@@ -713,8 +765,27 @@ export function CapturaManual({
     }
     return (
       <>
-        {previas.map((indicador) => fila(bloque, indicador))}
-        {tasasPrevias.map((tasa) => bandaTasa(tasa))}
+        {/* Cada variable previa con la tasa que sale de ella, y no todas las
+            tasas juntas al final: la cadena del canal es «impresiones ─CTR→
+            clics ─CVR→ leads», y leerla en ese orden es lo que explica de
+            dónde sale cada cifra. Agrupadas, había que ir y volver. */}
+        {previas.map((indicador) => {
+          const tasa = tasasPrevias.find((t) => t.desde === indicador.id)
+          return (
+            <Fragment key={indicador.id}>
+              {fila(bloque, indicador)}
+              {/* El CPM no está en «Variables»: se deriva de la inversión y
+                  las impresiones, y va entre las dos. */}
+              {indicador.id === ID_INVERSION && porId.has(ID_IMPRESIONES) && bandaCpm()}
+              {tasa && bandaTasa(tasa)}
+            </Fragment>
+          )
+        })}
+        {/* Una tasa cuyo origen no es ninguna de las filas de arriba se
+            quedaría sin pintar: va detrás, que es mejor que perderla. */}
+        {tasasPrevias
+          .filter((t) => !previas.some((i) => i.id === t.desde))
+          .map((tasa) => bandaTasa(tasa))}
         {resto.map((indicador) => {
           const tasa = tasaTras(indicador)
           return (
@@ -1236,15 +1307,18 @@ function ConmutadorAgrupacion({
 function NombreTasa({
   texto,
   fuerte = false,
+  /** El CPM es un precio, no un porcentaje: su pastilla lleva el billete. */
+  Icono = Percent,
   children,
 }: {
   texto: string
   fuerte?: boolean
+  Icono?: LucideIcon
   children?: ReactNode
 }) {
   return (
     <span className="flex min-w-0 items-center gap-2.5">
-      <IconoEnPastilla Icono={Percent} color="var(--brand)" tamano="sm" />
+      <IconoEnPastilla Icono={Icono} color="var(--brand)" tamano="sm" />
       {/* Parte en dos líneas antes que cortarse: en móvil la columna del
           nombre es estrecha y «Tasa…» no dice nada. */}
       <span className={cn('min-w-0 text-sm leading-snug text-foreground', fuerte ? 'font-semibold' : 'font-medium')}>

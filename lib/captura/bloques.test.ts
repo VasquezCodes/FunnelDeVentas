@@ -123,12 +123,12 @@ describe.each(LIBROS)('bloquesPorCanalDe, $nombre', ({ ids }) => {
 })
 
 describe('bloquesPorCanalDe, según cómo trae Discoveries el libro', () => {
-  it('por canal: cada canal lleva sus discoveries entre llamadas y ventas; detrás, Propuestas', () => {
+  it('por canal: de la inversión al lead y de ahí a la venta, en el orden de la cadena', () => {
     const bloques = bloquesPorCanalDe(CON_DESGLOSE)
     expect(filasDe(bloques.find((b) => b.canal === 'publicidad')!)).toEqual([
+      'publicidad-inversion',
       'publicidad-impresiones',
       'publicidad-clicks',
-      'publicidad-inversion',
       'eleads.publicidad',
       'llamadas.publicidad',
       'discoveries.publicidad',
@@ -143,9 +143,9 @@ describe('bloquesPorCanalDe, según cómo trae Discoveries el libro', () => {
   it('sin desglose: de la materia prima a la venta, y detrás Discoveries y Propuestas', () => {
     const bloques = bloquesPorCanalDe(SIN_DESGLOSE)
     expect(filasDe(bloques.find((b) => b.canal === 'publicidad')!)).toEqual([
+      'publicidad-inversion',
       'publicidad-impresiones',
       'publicidad-clicks',
-      'publicidad-inversion',
       'eleads.publicidad',
       'llamadas.publicidad',
       'ventas.publicidad',

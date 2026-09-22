@@ -133,6 +133,20 @@ const ETAPAS: DefEtapa[] = [
 // ── Insumos por canal ───────────────────────────────────────────────────
 // La materia prima con la que cada canal produce leads. Se leen para poder
 // explicar POR QUÉ un canal se quedó corto: sin clics no hay leads.
+//
+// ── El orden es la cadena, no el de la hoja ─────────────────────────────
+// Van de lo que se pone a lo que sale, que es como el plan los encadena y
+// como se capturan:
+//
+//     Inversión ──CPM──▶ Impresiones ──CTR──▶ Clics ──CVR──▶ Engaged Leads
+//
+// Estaban al revés —impresiones, clics, inversión—, que es el orden de las
+// filas del Excel. En la captura por canal eso pedía teclear el resultado
+// antes que su causa: primero las impresiones y al final el dinero que las
+// compró. Los otros canales siguen la misma regla, y el último insumo de
+// cada uno es siempre el que multiplica por su CVR para dar los leads:
+// clics en publicidad, contactos en prospección y referidos, visitas en
+// contenido, aperturas en newsletter.
 
 interface DefInsumo {
   id: string
@@ -145,6 +159,16 @@ interface DefInsumo {
 }
 
 const INSUMOS: DefInsumo[] = [
+  {
+    id: 'publicidad-inversion',
+    clave: 'Publicidad_Inversion',
+    nombre: 'Inversión en publicidad',
+    canal: 'publicidad',
+    unidad: 'moneda',
+    direccion: 'menor-mejor',
+    definicion:
+      'Dinero puesto en medios pagados. Se lee como «menor mejor»: gastar por debajo del plan es buena noticia siempre que el volumen aguante, y si no aguanta lo dirá la etapa correspondiente.',
+  },
   {
     id: 'publicidad-impresiones',
     clave: 'Publicidad_Impresiones',
@@ -164,16 +188,6 @@ const INSUMOS: DefInsumo[] = [
     definicion: 'Clics que llegan a la landing o al formulario desde un anuncio.',
   },
   {
-    id: 'publicidad-inversion',
-    clave: 'Publicidad_Inversion',
-    nombre: 'Inversión en publicidad',
-    canal: 'publicidad',
-    unidad: 'moneda',
-    direccion: 'menor-mejor',
-    definicion:
-      'Dinero puesto en medios pagados. Se lee como «menor mejor»: gastar por debajo del plan es buena noticia siempre que el volumen aguante, y si no aguanta lo dirá la etapa correspondiente.',
-  },
-  {
     id: 'prospeccion-contactos',
     clave: 'Prospeccion_Contactos',
     nombre: 'Contactos a prospectar',
@@ -181,15 +195,6 @@ const INSUMOS: DefInsumo[] = [
     unidad: 'cantidad',
     direccion: 'mayor-mejor',
     definicion: 'Contactos en frío que el equipo se compromete a trabajar en el periodo.',
-  },
-  {
-    id: 'referidos-contactos',
-    clave: 'Referidos_Contactos',
-    nombre: 'Contactos reactivados',
-    canal: 'referidos',
-    unidad: 'cantidad',
-    direccion: 'mayor-mejor',
-    definicion: 'Contactos de la base que se vuelven a tocar buscando una referencia.',
   },
   {
     id: 'referidos-reactivaciones',
@@ -201,13 +206,13 @@ const INSUMOS: DefInsumo[] = [
     definicion: 'Reactivaciones planificadas sobre la base de referidos.',
   },
   {
-    id: 'afiliados-contactos',
-    clave: 'Afiliados_Contactos',
+    id: 'referidos-contactos',
+    clave: 'Referidos_Contactos',
     nombre: 'Contactos reactivados',
-    canal: 'afiliados',
+    canal: 'referidos',
     unidad: 'cantidad',
     direccion: 'mayor-mejor',
-    definicion: 'Contactos de afiliados que se vuelven a tocar.',
+    definicion: 'Contactos de la base que se vuelven a tocar buscando una referencia.',
   },
   {
     id: 'afiliados-reactivaciones',
@@ -219,13 +224,13 @@ const INSUMOS: DefInsumo[] = [
     definicion: 'Reactivaciones planificadas sobre la red de afiliados.',
   },
   {
-    id: 'contenido-visitas',
-    clave: 'Contenido_Visitas',
-    nombre: 'Visitas a contenido largo',
-    canal: 'contenido',
+    id: 'afiliados-contactos',
+    clave: 'Afiliados_Contactos',
+    nombre: 'Contactos reactivados',
+    canal: 'afiliados',
     unidad: 'cantidad',
     direccion: 'mayor-mejor',
-    definicion: 'Visitas a las piezas largas: el artículo o el vídeo que hace el trabajo de fondo.',
+    definicion: 'Contactos de afiliados que se vuelven a tocar.',
   },
   {
     id: 'contenido-creacion',
@@ -237,13 +242,13 @@ const INSUMOS: DefInsumo[] = [
     definicion: 'Piezas largas que el plan compromete producir en el periodo.',
   },
   {
-    id: 'newsletter-aperturas',
-    clave: 'Newsletter_AEmail',
-    nombre: 'Aperturas de newsletter',
-    canal: 'newsletter',
+    id: 'contenido-visitas',
+    clave: 'Contenido_Visitas',
+    nombre: 'Visitas a contenido largo',
+    canal: 'contenido',
     unidad: 'cantidad',
     direccion: 'mayor-mejor',
-    definicion: 'Correos de la newsletter que se abren.',
+    definicion: 'Visitas a las piezas largas: el artículo o el vídeo que hace el trabajo de fondo.',
   },
   {
     id: 'newsletter-envios',
@@ -253,6 +258,15 @@ const INSUMOS: DefInsumo[] = [
     unidad: 'cantidad',
     direccion: 'mayor-mejor',
     definicion: 'Correos que el plan prevé enviar.',
+  },
+  {
+    id: 'newsletter-aperturas',
+    clave: 'Newsletter_AEmail',
+    nombre: 'Aperturas de newsletter',
+    canal: 'newsletter',
+    unidad: 'cantidad',
+    direccion: 'mayor-mejor',
+    definicion: 'Correos de la newsletter que se abren.',
   },
 ]
 
