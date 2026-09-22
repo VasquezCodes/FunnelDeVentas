@@ -338,7 +338,7 @@ export function Tablero({
       id: 'canales',
       clave: 'Canales',
       icono: MagnetIcon,
-      titulo: 'De dónde viene y qué cuesta',
+      titulo: 'Procedencia y coste de captación',
       glosa: canalCaro
         ? `El coste por lead de ${canalCaro.nombre.toLowerCase()} se ha ido por encima del plan.`
         : 'Lo que cada canal aporta al embudo y lo que hay que pagar por ello.',
@@ -350,7 +350,7 @@ export function Tablero({
       clave: 'Ingresos',
       icono: CoinsIcon,
       titulo: 'De qué depende el ingreso',
-      glosa: 'Cuánto del mes estaba ganado de antemano y cuánto hubo que vender.',
+      glosa: 'Ventas e ingresos recurrentes.',
       avisa: dineroAvisa,
       contenido: <Dinero serie={serieDelTipo} periodoId={periodo.id} />,
     },
