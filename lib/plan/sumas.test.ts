@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { INDICADORES_DEL_PLAN } from '@/lib/plan/catalogo'
 import { SUMANDOS, TOTALES_CALCULADOS, idsCapturables, totalesCalculadosEn } from '@/lib/plan/sumas'
 
-/** Los dos libros que hay: el 0726 reparte Discoveries por canal; los anteriores, no. */
+/**
+ * Los libros que hay. El desglose por canal ha ido llegando por etapas: el
+ * 0726 estrenó el de Discoveries y después llegó el de Propuestas, así que
+ * hay libros con las dos repartidas, con una sola y con ninguna.
+ */
 const CON_DESGLOSE = INDICADORES_DEL_PLAN.map((i) => i.id)
-const SIN_DESGLOSE = CON_DESGLOSE.filter((id) => !id.startsWith('discoveries.'))
+const SIN_PROPUESTAS = CON_DESGLOSE.filter((id) => !id.startsWith('propuestas.'))
+const SIN_DESGLOSE = SIN_PROPUESTAS.filter((id) => !id.startsWith('discoveries.'))
 
 describe('SUMANDOS', () => {
   it('el total de Engaged Leads suma sus siete canales', () => {
@@ -84,13 +89,14 @@ describe('SUMANDOS', () => {
 })
 
 describe('TOTALES_CALCULADOS', () => {
-  it('son los seis totales que pueden calcularse; Propuestas no se reparte', () => {
+  it('son los siete totales que pueden calcularse', () => {
     expect([...TOTALES_CALCULADOS].sort()).toEqual([
       'captacion-total',
       'discoveries',
       'eleads',
       'ingreso-total',
       'llamadas',
+      'propuestas',
       'ventas',
     ])
   })
@@ -100,6 +106,11 @@ describe('totalesCalculadosEn', () => {
   it('Discoveries solo se calcula en el libro que la reparte por canal', () => {
     expect(totalesCalculadosEn(CON_DESGLOSE).has('discoveries')).toBe(true)
     expect(totalesCalculadosEn(SIN_DESGLOSE).has('discoveries')).toBe(false)
+  })
+
+  it('Propuestas, igual: es un total solo donde el libro la reparte', () => {
+    expect(totalesCalculadosEn(CON_DESGLOSE).has('propuestas')).toBe(true)
+    expect(totalesCalculadosEn(SIN_PROPUESTAS).has('propuestas')).toBe(false)
   })
 
   it('los otros cinco se calculan en los dos libros', () => {
@@ -123,7 +134,8 @@ describe('idsCapturables', () => {
     expect(ids.has('discoveries.publicidad')).toBe(true)
   })
 
-  it('sin desglose, Discoveries se sigue tecleando', () => {
+  it('sin desglose, Discoveries y Propuestas se siguen tecleando', () => {
     expect(idsCapturables(SIN_DESGLOSE).has('discoveries')).toBe(true)
+    expect(idsCapturables(SIN_DESGLOSE).has('propuestas')).toBe(true)
   })
 })

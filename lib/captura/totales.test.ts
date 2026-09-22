@@ -36,7 +36,9 @@ describe('completarTotales', () => {
   })
 
   it('sin ningún sumando con dato, el total no aparece: vacío no es cero', () => {
-    expect(completarTotales({ propuestas: 20 }, CON_DESGLOSE)).toEqual({ propuestas: 20 })
+    // Un total tecleado sin ninguna de sus partes no se conserva: la cifra
+    // vendría de un libro que no repartía esa etapa, y ya no manda.
+    expect(completarTotales({ eleads: 20 }, CON_DESGLOSE)).toEqual({})
   })
 
   it('con un libro que reparte Discoveries, su total es la suma de los canales y gana a la cifra tecleada', () => {
@@ -103,7 +105,7 @@ describe('sumandosConDato', () => {
   })
 
   it('un indicador que no es un total no tiene sumandos', () => {
-    expect(sumandosConDato({ propuestas: 20 }, 'propuestas')).toBeNull()
+    expect(sumandosConDato({ 'ventas-arco': 2 }, 'ventas-arco')).toBeNull()
   })
 })
 

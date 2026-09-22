@@ -11,10 +11,10 @@
  * estrena canal, el catálogo lo recoge y los totales lo suman sin tocar este
  * archivo.
  *
- * Discoveries es un total solo en los libros que la reparten por canal
- * (desde el 0726). En los anteriores es una cifra que se teclea. Por eso lo
- * que se calcula en un plan concreto lo dice `totalesCalculadosEn`, con las
- * filas que ese libro trae.
+ * Discoveries y Propuestas son un total solo en los libros que las reparten
+ * por canal (Discoveries desde el 0726; Propuestas, después). En los
+ * anteriores son cifras que se teclean. Por eso lo que se calcula en un plan
+ * concreto lo dice `totalesCalculadosEn`, con las filas que ese libro trae.
  */
 
 import type { Indicador } from '@/lib/tipos'
@@ -31,7 +31,7 @@ function idsDonde(condicion: (i: Indicador) => boolean): string[] {
  * importe ya entra por «Altas ARCO».
  */
 export const SUMANDOS: ReadonlyMap<string, readonly string[]> = new Map([
-  ...['eleads', 'llamadas', 'discoveries', 'ventas'].map(
+  ...['eleads', 'llamadas', 'discoveries', 'propuestas', 'ventas'].map(
     (etapa) => [etapa, idsDonde((i) => i.desglosaA === etapa)] as const,
   ),
   [

@@ -111,6 +111,11 @@ const ETAPAS: DefEtapa[] = [
     clave: 'Propuestas_FLECHA',
     nombre: 'Propuestas',
     etapa: 4,
+    // El libro las reparte por canal desde que se añadieron las filas
+    // «Propuestas_FLECHA_<Canal>». Opcional como las de Discoveries: los
+    // libros anteriores solo traen el total, y entonces se teclea.
+    prefijoCanal: 'Propuestas_FLECHA',
+    desgloseOpcional: true,
     definicion:
       'Propuestas enviadas tras la discovery. Sale de aplicar la tasa de propuestas sobre las discoveries del periodo.',
   },
@@ -161,7 +166,7 @@ const INSUMOS: DefInsumo[] = [
   {
     id: 'publicidad-inversion',
     clave: 'Publicidad_Inversion',
-    nombre: 'Inversión en medios',
+    nombre: 'Inversión en publicidad',
     canal: 'publicidad',
     unidad: 'moneda',
     direccion: 'menor-mejor',

@@ -73,18 +73,49 @@ export function bloquesDe(ids: Iterable<string>): BloqueCaptura[] {
   const sumandosDe = (total: string) => solo(SUMANDOS.get(total) ?? [])
 
   return [
+    // Primero, porque es lo primero que pasa: los envíos, los contactos y los
+    // clics son lo que se hace ANTES de que un canal dé un lead, y la vista
+    // por canal ya los pone al principio de cada bloque. Con las dos vistas
+    // en el mismo orden, cambiar de una a otra no reordena la cabeza de
+    // quien está capturando. Sigue plegado: son doce casillas que casi
+    // siempre se rellenan de una vez al empezar el mes.
+    {
+      id: 'insumos',
+      titulo: 'Variables previas por canal',
+      grupos: gruposDeInsumos(delPlan),
+      total: null,
+      plegado: true,
+    },
     bloque('eleads', 'Engaged Leads', sumandosDe('eleads'), 'eleads'),
     bloque('llamadas', 'Llamadas iniciales', sumandosDe('llamadas'), 'llamadas'),
+    // Discoveries y Propuestas se reparten por canal en unos libros y en
+    // otros no, y cada una por su cuenta. Tres formas, según lo que traiga:
+    //   · las dos repartidas   → un bloque con canales y total cada una
+    //   · solo Discoveries     → su bloque, y Propuestas como fila suelta
+    //   · ninguna              → las dos juntas, porque dos bloques de una
+    //                            sola fila trocean la pantalla sin informar
     ...(repartePorCanal(delPlan, 'discoveries')
       ? [
           bloque('discoveries', 'Discoveries', sumandosDe('discoveries'), 'discoveries'),
-          // Una sola fila, pero su propio bloque: entre Discoveries y Ventas
-          // van sus dos tasas, como entre cualquier otra pareja de etapas.
-          bloque('propuestas', 'Propuestas', solo(['propuestas']), null),
+          repartePorCanal(delPlan, 'propuestas')
+            ? bloque('propuestas', 'Propuestas', sumandosDe('propuestas'), 'propuestas')
+            : // Una sola fila, pero su propio bloque: entre Discoveries y
+              // Ventas van sus dos tasas, como entre cualquier otra pareja.
+              bloque('propuestas', 'Propuestas', solo(['propuestas']), null),
         ]
-      : // Juntas: el plan no las reparte por canal, y dos bloques de una sola
-        // fila trocearían la pantalla sin informar.
-        [bloque('discoveries-propuestas', 'Discoveries y propuestas', solo(['discoveries', 'propuestas']), null)]),
+      : repartePorCanal(delPlan, 'propuestas')
+        ? [
+            bloque('discoveries-propuestas', 'Discoveries', solo(['discoveries']), null),
+            bloque('propuestas', 'Propuestas', sumandosDe('propuestas'), 'propuestas'),
+          ]
+        : [
+            bloque(
+              'discoveries-propuestas',
+              'Discoveries y propuestas',
+              solo(['discoveries', 'propuestas']),
+              null,
+            ),
+          ]),
     bloque('ventas', 'Ventas FLECHA', sumandosDe('ventas'), 'ventas'),
     // El orden del panel Dinero, no el del Excel: primero lo ya ganado (las
     // mensualidades) y después lo vendido en el mes. Las ventas ARCO son
@@ -103,16 +134,6 @@ export function bloquesDe(ids: Iterable<string>): BloqueCaptura[] {
       'ingreso-total',
     ),
     bloque('captacion', 'Gasto de captación', sumandosDe('captacion-total'), 'captacion-total'),
-    // Hoy ningún gráfico los usa: se pueden capturar sin que estorben. El
-    // nombre es el que usa el equipo: lo que hay que hacer antes de que un
-    // canal dé leads (impresiones, contactos, envíos).
-    {
-      id: 'insumos',
-      titulo: 'Variables previas por canal',
-      grupos: gruposDeInsumos(delPlan),
-      total: null,
-      plegado: true,
-    },
   ]
 }
 
@@ -142,6 +163,7 @@ export function bloquesPorCanalDe(ids: Iterable<string>): BloqueCaptura[] {
         `eleads.${canal}`,
         `llamadas.${canal}`,
         `discoveries.${canal}`,
+        `propuestas.${canal}`,
         `ventas.${canal}`,
         `captacion.${canal}`,
       ].filter((id) => delPlan.has(id))
@@ -154,6 +176,38 @@ export function bloquesPorCanalDe(ids: Iterable<string>): BloqueCaptura[] {
         canal,
       }
     }),
-    ...bloquesDe(delPlan).filter((b) => ['discoveries-propuestas', 'propuestas', 'ingresos'].includes(b.id)),
+    ...colaSinCanal(delPlan, canales),
   ]
+}
+
+/**
+ * Lo que queda detrás de los canales: las casillas de la vista por etapa que
+ * ningún canal se ha llevado ya.
+ *
+ * Antes era una lista de bloques escrita a mano («Discoveries y propuestas»,
+ * «Propuestas», «Ingresos»). Dejó de valer en cuanto el libro empezó a
+ * repartir Propuestas por canal: sus siete casillas ya van dentro de cada
+ * canal, y volver a añadir el bloque entero las habría pintado dos veces —la
+ * misma cifra en dos sitios, y la pantalla sin saber cuál manda.
+ *
+ * Así que se calcula: se quitan de cada bloque las filas ya colocadas y se
+ * descartan los que se quedan vacíos. Con esto, cuando el libro reparta otra
+ * etapa más, esto sigue funcionando sin tocarlo.
+ */
+function colaSinCanal(delPlan: ReadonlySet<string>, canales: readonly Canal[]): BloqueCaptura[] {
+  const yaPuestas = new Set(
+    canales.flatMap((canal) =>
+      [...delPlan].filter((id) => id.endsWith(`.${canal}`) || id.startsWith(`${canal}-`)),
+    ),
+  )
+
+  return bloquesDe(delPlan)
+    .filter((b) => b.id !== 'insumos' && b.id !== 'captacion')
+    .map((bloque) => ({
+      ...bloque,
+      grupos: bloque.grupos
+        .map((g) => ({ ...g, filas: g.filas.filter((id) => !yaPuestas.has(id)) }))
+        .filter((g) => g.filas.length > 0),
+    }))
+    .filter((b) => b.grupos.length > 0)
 }

@@ -7,9 +7,11 @@ import { NOMBRE_CANAL } from '@/lib/tipos'
 
 /** Los dos libros que hay: el 0726 reparte Discoveries por canal; los anteriores, no. */
 const CON_DESGLOSE = INDICADORES_DEL_PLAN.map((i) => i.id)
-const SIN_DESGLOSE = CON_DESGLOSE.filter((id) => !id.startsWith('discoveries.'))
+const SIN_DESGLOSE = CON_DESGLOSE.filter(
+  (id) => !id.startsWith('discoveries.') && !id.startsWith('propuestas.'),
+)
 const LIBROS = [
-  { nombre: 'con Discoveries por canal', ids: CON_DESGLOSE, cuantos: 59 },
+  { nombre: 'con Discoveries por canal', ids: CON_DESGLOSE, cuantos: 66 },
   { nombre: 'sin Discoveries por canal', ids: SIN_DESGLOSE, cuantos: 52 },
 ]
 
@@ -48,15 +50,15 @@ describe.each(LIBROS)('bloquesDe, $nombre', ({ ids, cuantos }) => {
     expect(orden).toEqual([...orden].sort((a, b) => a - b))
   })
 
-  it('solo los insumos van plegados, y son el último bloque', () => {
+  it('solo los insumos van plegados, y son el primer bloque', () => {
     const plegados = bloques.filter((b) => b.plegado)
     expect(plegados).toHaveLength(1)
-    expect(plegados[0]).toBe(bloques.at(-1))
+    expect(plegados[0]).toBe(bloques[0])
     expect(filasDe(plegados[0])).toContain('publicidad-impresiones')
   })
 
   it('en los insumos, cada subtítulo es el canal de todas sus filas', () => {
-    const insumos = bloques.at(-1)!
+    const insumos = bloques[0]!
     expect(insumos.grupos.map((g) => g.titulo)).toEqual([
       'Publicidad',
       'Prospección',
@@ -75,13 +77,13 @@ describe.each(LIBROS)('bloquesDe, $nombre', ({ ids, cuantos }) => {
 })
 
 describe('bloquesDe, según cómo trae Discoveries el libro', () => {
-  it('por canal: su bloque con los siete canales y su total, y Propuestas aparte', () => {
+  it('por canal: Discoveries y Propuestas, cada una con sus canales y su total', () => {
     const bloques = bloquesDe(CON_DESGLOSE)
-    const discoveries = bloques.find((b) => b.id === 'discoveries')!
-    expect(discoveries.total).toBe('discoveries')
-    expect(filasDe(discoveries)).toEqual(SUMANDOS.get('discoveries'))
-    expect(bloques.find((b) => b.id === 'propuestas')).toMatchObject({ total: null })
-    expect(filasDe(bloques.find((b) => b.id === 'propuestas')!)).toEqual(['propuestas'])
+    for (const etapa of ['discoveries', 'propuestas']) {
+      const bloque = bloques.find((b) => b.id === etapa)!
+      expect(bloque.total).toBe(etapa)
+      expect(filasDe(bloque)).toEqual(SUMANDOS.get(etapa))
+    }
     expect(bloques.map((b) => b.id)).not.toContain('discoveries-propuestas')
   })
 
@@ -130,10 +132,12 @@ describe('bloquesPorCanalDe, según cómo trae Discoveries el libro', () => {
       'eleads.publicidad',
       'llamadas.publicidad',
       'discoveries.publicidad',
+      'propuestas.publicidad',
       'ventas.publicidad',
       'captacion.publicidad',
     ])
-    expect(bloques.filter((b) => !b.canal).map((b) => b.id)).toEqual(['propuestas', 'ingresos'])
+    // Propuestas ya va dentro de cada canal: detrás no se repite.
+    expect(bloques.filter((b) => !b.canal).map((b) => b.id)).toEqual(['ingresos'])
   })
 
   it('sin desglose: de la materia prima a la venta, y detrás Discoveries y Propuestas', () => {
