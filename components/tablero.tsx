@@ -33,6 +33,7 @@ import { filasDeCanal, canalMasDeteriorado } from '@/lib/canales'
 import { idsDeQuincenas } from '@/lib/reales/mes'
 
 import { Chasis, type Vista } from '@/components/chasis'
+import { DialogoConfirmar } from '@/components/dialogo-confirmar'
 import { periodoInicial } from '@/components/periodo-inicial'
 import { SelectorPeriodo } from '@/components/selector-periodo'
 import { CabeceraMes } from '@/components/cabecera-mes'
@@ -218,22 +219,38 @@ export function Tablero({
   /**
    * Con cambios sin guardar en la captura, cambiar de mes, de grano o de
    * vista pregunta antes de perderlos: son hasta 104 casillas por mes.
+   *
+   * La pregunta la hace un cuadro de la propia app (`DialogoConfirmar`) y no
+   * `window.confirm`, así que la respuesta ya no llega en el acto: en vez de
+   * preguntar «¿puedo?», se guarda lo que se iba a hacer y se ejecuta cuando
+   * la persona confirma. Sin cambios pendientes no se pregunta nada.
    */
-  const puedeSalir = () =>
-    pendientes === 0 ||
-    window.confirm(
-      `Hay ${pendientes} ${pendientes === 1 ? 'cambio' : 'cambios'} sin guardar. ¿Salir sin guardarlos?`,
-    )
-  const cambiarPeriodo = (id: string) => {
-    if (puedeSalir()) setPeriodoId(id)
+  const [salidaPendiente, setSalidaPendiente] = useState<(() => void) | null>(null)
+
+  const alSalir = (hazlo: () => void) => {
+    if (pendientes === 0) {
+      hazlo()
+      return
+    }
+    // Se guarda en una función que devuelve la función: `setState` llama a lo
+    // que le pases si es una función, y guardaría su resultado en vez de ella.
+    setSalidaPendiente(() => hazlo)
   }
-  const cambiarTipo = (t: TipoPeriodo) => {
-    if (puedeSalir()) setTipo(t)
-  }
-  const cambiarVista = (v: Vista) => {
-    if (v === vista || !puedeSalir()) return
-    setVista(v)
+
+  const confirmarSalida = () => {
+    salidaPendiente?.()
+    setSalidaPendiente(null)
+    // Lo pendiente deja de estarlo: lo tecleado se descarta al cambiar de
+    // periodo o de vista, y si no se pusiera a cero la siguiente salida
+    // volvería a preguntar por unos cambios que ya no existen.
     setPendientes(0)
+  }
+
+  const cambiarPeriodo = (id: string) => alSalir(() => setPeriodoId(id))
+  const cambiarTipo = (t: TipoPeriodo) => alSalir(() => setTipo(t))
+  const cambiarVista = (v: Vista) => {
+    if (v === vista) return
+    alSalir(() => setVista(v))
   }
 
   /**
@@ -285,10 +302,33 @@ export function Tablero({
           (p) => p.tipo === 'mes' && p.anio === periodo.anio && p.mes === periodo.mes,
         ) ?? null)
 
+  /**
+   * El aviso de cambios sin guardar. Se monta en las DOS salidas del
+   * componente: la pregunta se dispara desde la captura, pero también desde
+   * el tablero —cambiar de mes tras volver sin guardar—, y un cuadro montado
+   * en una sola rama no aparecería en la otra.
+   */
+  const avisoSalir = (
+    <DialogoConfirmar
+      abierto={salidaPendiente !== null}
+      titulo="Hay cambios sin guardar"
+      descripcion={
+        pendientes === 1
+          ? 'Has cambiado 1 cifra y no la has guardado. Si sales ahora se pierde.'
+          : `Has cambiado ${pendientes} cifras y no las has guardado. Si sales ahora se pierden.`
+      }
+      accion="Salir sin guardar"
+      cancelar="Seguir editando"
+      onConfirmar={confirmarSalida}
+      onCancelar={() => setSalidaPendiente(null)}
+    />
+  )
+
   if (vista === 'captura' && mesCaptura) {
     const [idQ1, idQ2] = idsDeQuincenas(mesCaptura.id)
     return (
       <Chasis vista={vista} onCambiarVista={cambiarVista} controles={controles}>
+        {avisoSalir}
         <CapturaManual
           mes={mesCaptura}
           periodoActivo={periodo}
@@ -314,9 +354,8 @@ export function Tablero({
   }
 
   /** ¿Alguna etapa del embudo cerró fuera de plan? Marca el raíl. */
-  const embudoAvisa = cabeceras.some((c) => c.indicador.etapa !== null && c.estado === 'critico')
-  const dineroAvisa =
-    comparativas.find((c) => c.indicador.id === 'ingreso-total')?.estado === 'critico'
+  const embudoAvisa = cabeceras.some((c) => c.indicador.etapa !== null && c.estado === 'fuera')
+  const dineroAvisa = comparativas.find((c) => c.indicador.id === 'ingreso-total')?.estado === 'fuera'
 
   /*
    * Cada icono del raíl nombra la pregunta de su sección, no el tipo de
@@ -371,6 +410,7 @@ export function Tablero({
 
   return (
     <Chasis vista={vista} onCambiarVista={cambiarVista} controles={controles}>
+      {avisoSalir}
       <div className="flex flex-col gap-8">
         <CabeceraMes periodo={periodo} comparativas={comparativas} />
         {errorReales && <AvisoReales motivo={errorReales} />}
