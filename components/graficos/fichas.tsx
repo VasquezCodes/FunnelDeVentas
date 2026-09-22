@@ -60,7 +60,8 @@ import {
   type HerramientasEntrada,
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
-import { tramoEnCurso } from '@/components/graficos/tramo-en-curso'
+import { tramoProyectado } from '@/components/graficos/tramo-proyectado'
+import { proyectar } from '@/lib/proyeccion'
 import { gsap } from '@/lib/animacion'
 import { ETIQUETAS_ESTADO, SIN_DATO, calcularEstado } from '@/lib/comparacion'
 import {
@@ -113,6 +114,26 @@ export interface Ficha {
 }
 
 const PUNTO_VACIO: PuntoFicha = { plan: null, real: null, cumplimiento: null, estado: 'sin-dato' }
+
+/** La posición del mes a medias en una ventana, o -1. */
+export function indiceEnCurso(ventana: readonly Periodo[]): number {
+  return ventana.findIndex((p) => p.cobertura !== undefined)
+}
+
+/**
+ * ¿Alguna ficha llega a proyectar? Lo pregunta la leyenda: anunciar una
+ * proyección que no se dibuja sería peor que no anunciarla.
+ */
+export function hayProyeccion(fichas: readonly Ficha[], ventana: readonly Periodo[]): boolean {
+  const enCurso = indiceEnCurso(ventana)
+  return fichas.some(
+    (f) =>
+      proyectar(
+        ventana.map((_, i) => ({ plan: f.puntos[i]?.plan ?? null, real: f.puntos[i]?.real ?? null })),
+        { enCurso },
+      ) !== null,
+  )
+}
 
 export { LARGO_VENTANA, ventanaDe } from '@/components/graficos/ventana'
 
@@ -308,7 +329,12 @@ export function RejillaFichas({
   return (
     <Hoja ref={refHoja}>
       <CabeceraHoja
-        leyenda={<LeyendaPlanReal forma="lineas" />}
+        leyenda={
+          <LeyendaPlanReal
+            forma="lineas"
+            proyeccion={hayProyeccion(fichas, ventana)}
+          />
+        }
         mes={ventana[elegido] ? etiquetaConCobertura(ventana[elegido]) : undefined}
         style={colorLeyenda ? ({ '--serie-real': colorLeyenda } as CSSProperties) : undefined}
       />
@@ -433,23 +459,38 @@ export function CeldaFicha({
 
   // Un mes a medias (solo en meses, nunca en quincenas) va punteado: su real
   // es «a la fecha» y, sin marca, la curva parecería hundirse.
-  const enCurso = ventana.findIndex((p) => p.cobertura !== undefined)
+  const enCurso = indiceEnCurso(ventana)
+
+  // La proyección del primer mes sin resultado: el plan de ese mes al ritmo
+  // al que se viene cumpliendo (lib/proyeccion.ts). Null si no hay con qué.
+  const proyeccion = useMemo(
+    () =>
+      proyectar(
+        ventana.map((_, i) => ({
+          plan: ficha.puntos[i]?.plan ?? null,
+          real: ficha.puntos[i]?.real ?? null,
+        })),
+        { enCurso },
+      ),
+    [ventana, ficha.puntos, enCurso],
+  )
+
   const datos = useMemo(
     () =>
-      tramoEnCurso(
+      tramoProyectado(
         ventana.map((periodo, i) => ({
           id: periodo.id,
           mes: etiquetaMes(periodo),
           plan: ficha.puntos[i]?.plan ?? null,
           real: ficha.puntos[i]?.real ?? null,
         })),
-        enCurso,
+        proyeccion,
       ),
-    [ventana, ficha.puntos, enCurso],
+    [ventana, ficha.puntos, proyeccion],
   )
   const n = datos.length
   const tope =
-    Math.max(0, ...datos.flatMap((d) => [d.plan ?? 0, d.real ?? 0, d.realEnCurso ?? 0])) || 1
+    Math.max(0, ...datos.flatMap((d) => [d.plan ?? 0, d.real ?? 0, d.proyectado ?? 0])) || 1
   const sueltos = useMemo(
     () => ({
       real: indicesSueltos(datos.map((d) => d.real)),
@@ -633,6 +674,44 @@ export function CeldaFicha({
               />
             )}
 
+            {/* La proyección: punteada, con el punto de anillo discontinuo.
+                El punto lleva data-punto-suelto para aparecer al final de la
+                entrada, con los demás sueltos. */}
+            {proyeccion && (
+              <Line
+                type="monotone"
+                dataKey="proyectado"
+                stroke="var(--color-real)"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray="0.1 5"
+                connectNulls={false}
+                isAnimationActive={false}
+                activeDot={false}
+                dot={({ cx, cy, index }) => {
+                  // Solo el mes proyectado lleva punto: los otros dos son
+                  // reales que el tramo arrastra para poder curvar, y ya
+                  // tienen el suyo en la línea sólida.
+                  if (cx == null || cy == null || !proyeccion.puntos.some((x) => x.indice === index)) {
+                    return <g key={`sin-punto-${index}`} />
+                  }
+                  return (
+                    <g key={`punto-proyeccion-${index}`} data-punto-suelto>
+                      <circle
+                        cx={Number(cx)}
+                        cy={Number(cy)}
+                        r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
+                        fill="var(--card)"
+                        stroke="var(--color-real)"
+                        strokeWidth={2}
+                        strokeDasharray="1.6 1.6"
+                      />
+                    </g>
+                  )
+                }}
+              />
+            )}
+
             {/* El real: trazo de 2 px y velo. `fillOpacity` a 1 porque la
                 opacidad ya la lleva el degradado. */}
             <Area
@@ -678,39 +757,6 @@ export function CeldaFicha({
                 )
               }}
             />
-
-            {/* El tramo del mes en curso: punteado y con el punto hueco. El
-                punto lleva data-punto-suelto para aparecer al final de la
-                entrada, con los demás sueltos. */}
-            {enCurso >= 0 && (
-              <Line
-                type="monotone"
-                dataKey="realEnCurso"
-                stroke="var(--color-real)"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeDasharray="0.1 5"
-                connectNulls={false}
-                isAnimationActive={false}
-                activeDot={false}
-                dot={({ cx, cy, index }) =>
-                  index === enCurso && cx != null && cy != null ? (
-                    <circle
-                      key="punto-en-curso"
-                      data-punto-suelto
-                      cx={Number(cx)}
-                      cy={Number(cy)}
-                      r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
-                      fill="var(--card)"
-                      stroke="var(--color-real)"
-                      strokeWidth={2}
-                    />
-                  ) : (
-                    <g key={`sin-punto-${index}`} />
-                  )
-                }
-              />
-            )}
 
             {/* El plan: discontinuo y fino. Va después del área para pasar
                 por encima del velo. */}

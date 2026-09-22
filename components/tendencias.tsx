@@ -78,6 +78,7 @@ import {
 import { colorDeFamilia, configPlanReal } from '@/components/graficos/config'
 import { indicesSueltos, lecturaDe, type PuntoDeSerie } from '@/components/graficos/fichas'
 import { LeyendaPlanReal } from '@/components/graficos/leyenda-plan-real'
+import { proyectar } from '@/lib/proyeccion'
 import { TarjetaGrafico } from '@/components/graficos/tarjeta-grafico'
 import { useAnchoContenedor } from '@/components/graficos/use-ancho-contenedor'
 import {
@@ -85,7 +86,7 @@ import {
   type HerramientasEntrada,
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
-import { tramoEnCurso } from '@/components/graficos/tramo-en-curso'
+import { tramoProyectado } from '@/components/graficos/tramo-proyectado'
 import { gsap } from '@/lib/animacion'
 import {
   ETIQUETAS_ESTADO,
@@ -344,9 +345,15 @@ export function Tendencias({
     () => (rango === 'plan' ? datos : datos.slice(inicio, inicio + MESES_VENTANA)),
     [datos, rango, inicio],
   )
-  // Un mes a medias va punteado, como en las fichas.
+  // El mes a medias va en la línea sólida: es un real, aunque sea parcial.
+  // Lo único que se dibuja aparte es la proyección del mes que aún no tiene
+  // resultado, calculada como en las fichas (lib/proyeccion.ts).
   const enCurso = visibles.findIndex((p) => p.periodo.cobertura !== undefined)
-  const dibujo = useMemo(() => tramoEnCurso(visibles, enCurso), [visibles, enCurso])
+  const proyeccion = useMemo(
+    () => proyectar(visibles.map((p) => ({ plan: p.meta, real: p.real })), { enCurso }),
+    [visibles, enCurso],
+  )
+  const dibujo = useMemo(() => tramoProyectado(visibles, proyeccion), [visibles, proyeccion])
   const elegido = Math.max(0, indiceElegido - inicio)
   // Los meses con dato entre dos sin él: sin punto propio no se verían.
   const sueltos = useMemo(
@@ -582,7 +589,7 @@ export function Tendencias({
         className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2"
         style={{ '--serie-real': color } as CSSProperties}
       >
-        <LeyendaPlanReal forma="lineas" />
+        <LeyendaPlanReal forma="lineas" proyeccion={proyeccion !== null} />
         <p className="text-xs font-medium text-foreground tabular-nums">
           {puntoMostrado ? etiquetaConCobertura(puntoMostrado.periodo) : null}
         </p>
@@ -683,6 +690,40 @@ export function Tendencias({
                 />
               )}
 
+              {/* La proyección: punteada y con el punto de anillo, como en las
+                  fichas. Va DEBAJO del área: arrastra un par de puntos reales
+                  para poder curvar y el trazo sólido los tapa. */}
+              {proyeccion && (
+                <Line
+                  type="monotone"
+                  dataKey="proyectado"
+                  stroke="var(--color-real)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeDasharray="0.1 5"
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  activeDot={false}
+                  dot={({ cx, cy, index }) =>
+                    proyeccion.puntos.some((x) => x.indice === index) && cx != null && cy != null ? (
+                      <circle
+                        key={`punto-proyeccion-${index}`}
+                        data-punto-suelto
+                        cx={Number(cx)}
+                        cy={Number(cy)}
+                        r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
+                        fill="var(--card)"
+                        stroke="var(--color-real)"
+                        strokeWidth={2}
+                        strokeDasharray="1.6 1.6"
+                      />
+                    ) : (
+                      <g key={`sin-punto-${index}`} />
+                    )
+                  }
+                />
+              )}
+
               {/* El real: trazo de 2 px y velo degradado. `fillOpacity` a 1
                   porque la opacidad ya la lleva el degradado (Recharts pone
                   0,6 por defecto y apagaría el velo). */}
@@ -730,38 +771,6 @@ export function Tendencias({
                   )
                 }}
               />
-
-              {/* El tramo del mes en curso: punteado y con el punto hueco, como
-                  en las fichas. */}
-              {enCurso >= 0 && (
-                <Line
-                  type="monotone"
-                  dataKey="realEnCurso"
-                  stroke="var(--color-real)"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeDasharray="0.1 5"
-                  connectNulls={false}
-                  isAnimationActive={false}
-                  activeDot={false}
-                  dot={({ cx, cy, index }) =>
-                    index === enCurso && cx != null && cy != null ? (
-                      <circle
-                        key="punto-en-curso"
-                        data-punto-suelto
-                        cx={Number(cx)}
-                        cy={Number(cy)}
-                        r={index === mostrado ? RADIO_PUNTO : RADIO_SUELTO + 1}
-                        fill="var(--card)"
-                        stroke="var(--color-real)"
-                        strokeWidth={2}
-                      />
-                    ) : (
-                      <g key={`sin-punto-${index}`} />
-                    )
-                  }
-                />
-              )}
 
               {/* El plan: discontinuo, fino y sin puntos salvo el del mes que
                   se lee. Va después del área para pasar por encima del velo. */}

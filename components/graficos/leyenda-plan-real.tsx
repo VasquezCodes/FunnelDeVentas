@@ -16,16 +16,31 @@
  * y va discontinuo; el real es un trazo continuo de 2 px.
  */
 
+import { MESES_DE_RITMO } from '@/lib/proyeccion'
 import { cn } from '@/lib/utils'
 
 export interface LeyendaPlanRealProps {
   forma?: 'barras' | 'lineas'
+  /**
+   * Añade la proyección: el mes que todavía no tiene resultado, calculado
+   * con el plan de ese mes al ritmo de cumplimiento de los últimos meses
+   * cerrados (`lib/proyeccion.ts`). La leyenda dice con cuántos meses se
+   * hizo, porque una proyección sin su método es una cifra caída del cielo.
+   */
+  proyeccion?: boolean
+  /** Cuántos meses cerrados entran en el ritmo, para decirlo en la leyenda. */
+  mesesDeRitmo?: number
   className?: string
 }
 
-export function LeyendaPlanReal({ forma = 'barras', className }: LeyendaPlanRealProps) {
+export function LeyendaPlanReal({
+  forma = 'barras',
+  proyeccion = false,
+  mesesDeRitmo = MESES_DE_RITMO,
+  className,
+}: LeyendaPlanRealProps) {
   return (
-    <div className={cn('flex items-center gap-4 text-xs', className)}>
+    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs', className)}>
       <span className="flex items-center gap-2 text-muted-foreground">
         <MuestraPlan forma={forma} />
         Plan
@@ -34,7 +49,44 @@ export function LeyendaPlanReal({ forma = 'barras', className }: LeyendaPlanReal
         <MuestraReal forma={forma} />
         Real
       </span>
+      {proyeccion && (
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <MuestraPunteada />
+          Proyección (últimos {mesesDeRitmo} meses)
+        </span>
+      )}
     </div>
+  )
+}
+
+/**
+ * El trazo de la proyección: punteado y rematado con un anillo discontinuo,
+ * igual que en el gráfico. Si la leyenda dibujara otra cosa no serviría para
+ * leerlo.
+ */
+function MuestraPunteada() {
+  return (
+    <svg aria-hidden="true" width="26" height="10" className="shrink-0">
+      <line
+        x1="1"
+        x2="18"
+        y1="5"
+        y2="5"
+        stroke="var(--serie-real)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray="0.1 4"
+      />
+      <circle
+        cx="21.5"
+        cy="5"
+        r="3"
+        fill="var(--card)"
+        stroke="var(--serie-real)"
+        strokeWidth="1.75"
+        strokeDasharray="1.4 1.4"
+      />
+    </svg>
   )
 }
 

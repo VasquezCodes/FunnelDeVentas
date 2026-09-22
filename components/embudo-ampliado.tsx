@@ -17,7 +17,14 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { CaretLeftIcon, CaretRightIcon, XIcon } from '@phosphor-icons/react/ssr'
 
-import { CeldaFicha, cociente, type Ficha, type PuntoDeSerie } from '@/components/graficos/fichas'
+import {
+  CeldaFicha,
+  cociente,
+  hayProyeccion,
+  type Ficha,
+  type PuntoDeSerie,
+} from '@/components/graficos/fichas'
+import { LeyendaPlanReal } from '@/components/graficos/leyenda-plan-real'
 import { Semaforo } from '@/components/semaforo'
 import { calcularEstado, formatearTasaConversion, formatearValor } from '@/lib/comparacion'
 import { tasaEntre, tasaReal } from '@/lib/tasas'
@@ -84,7 +91,17 @@ export function EmbudoAmpliado({
       {ficha && punto && abierta !== null && (
         <div>
           <div className="flex items-center justify-between gap-3 border-b px-6 py-3" style={{ borderColor: 'var(--regla-fina)' }}>
-            <p className="text-sm text-muted-foreground">{punto.periodo.etiqueta}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1.5">
+              <p className="text-sm text-muted-foreground">{punto.periodo.etiqueta}</p>
+              {/* La rejilla de fichas lleva su leyenda en la cabecera de la
+                  hoja, pero esta ficha se abre encima y la tapa: aquí dentro
+                  el gráfico es más grande, tiene eje y rejilla, y era el único
+                  sitio donde tres trazos distintos no se explicaban. */}
+              <LeyendaPlanReal
+                forma="lineas"
+                proyeccion={hayProyeccion([ficha], periodos)}
+              />
+            </div>
             <div className="flex items-center gap-1">
               <BotonIcono
                 etiqueta="Ficha anterior"
