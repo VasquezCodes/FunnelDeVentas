@@ -42,7 +42,6 @@ export interface Panel {
   /** Icono de la sección en el raíl. */
   icono?: Icon
   titulo: string
-  glosa: string
   /** Marca el raíl si esta sección tiene algo que mirar. */
   avisa?: boolean
   contenido: React.ReactNode
@@ -240,14 +239,15 @@ export function Carrusel({ paneles }: CarruselProps) {
         </span>
       </div>
 
-      {/* ── Cabecera del panel activo ────────────────────────────────── */}
-      <div className="mt-6 mb-5 min-h-[4.5rem]">
+      {/* ── Cabecera del panel activo ──────────────────────────────────
+          Solo el título. La altura mínima da para dos renglones, que es lo
+          que ocupa el título más largo en una pantalla estrecha: sin ella,
+          pasar de un panel a otro daría un salto de línea y el gráfico de
+          debajo se movería. */}
+      <div className="mt-6 mb-5 min-h-13">
         <h2 className="font-display text-xl leading-tight font-semibold tracking-tight text-balance">
           {panel.titulo}
         </h2>
-        <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
-          {panel.glosa}
-        </p>
       </div>
 
       {/* ── Vía ──────────────────────────────────────────────────────────

@@ -89,11 +89,37 @@ type Grupo = 'ganado' | 'vendido'
  * Las cinco partidas, del dinero más seguro al más variable: ese es el
  * orden del anillo, del libro y de la rampa de verdes.
  */
-const PARTIDAS: Array<{ id: string; grupo: Grupo; Icono: LucideIcon; color: string }> = [
+/**
+ * `nombre` renombra la partida SOLO aquí. El catálogo las llama «Altas
+ * FLECHA» y «Altas ARCO» porque en la captura conviven con «Ventas FLECHA»
+ * y «Ventas ARCO», que son los contratos —cuántos— frente a su importe, y
+ * llamar a las dos cosas igual haría imposible saber qué se teclea en cada
+ * casilla. En esta tabla no hay contratos: todo son euros, no hay con qué
+ * confundirlas, y «Ventas» es como las llama el equipo.
+ */
+const PARTIDAS: Array<{
+  id: string
+  grupo: Grupo
+  Icono: LucideIcon
+  color: string
+  nombre?: string
+}> = [
   { id: 'ingreso-flecha-recurrente', grupo: 'ganado', Icono: Repeat, color: 'var(--dinero-1)' },
   { id: 'ingreso-arco-recurrente', grupo: 'ganado', Icono: Repeat, color: 'var(--dinero-2)' },
-  { id: 'ingreso-flecha-setup', grupo: 'vendido', Icono: UserPlus, color: 'var(--dinero-3)' },
-  { id: 'ingreso-arco-setup', grupo: 'vendido', Icono: UserPlus, color: 'var(--dinero-4)' },
+  {
+    id: 'ingreso-flecha-setup',
+    grupo: 'vendido',
+    Icono: UserPlus,
+    color: 'var(--dinero-3)',
+    nombre: 'Ventas FLECHA',
+  },
+  {
+    id: 'ingreso-arco-setup',
+    grupo: 'vendido',
+    Icono: UserPlus,
+    color: 'var(--dinero-4)',
+    nombre: 'Ventas ARCO',
+  },
   { id: 'ingreso-otros', grupo: 'vendido', Icono: Coins, color: 'var(--dinero-5)' },
 ]
 
@@ -242,7 +268,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
       if (!c) continue
       encontradas.push({
         id: def.id,
-        nombre: c.indicador.nombre,
+        nombre: def.nombre ?? c.indicador.nombre,
         grupo: def.grupo,
         Icono: def.Icono,
         color: def.color,

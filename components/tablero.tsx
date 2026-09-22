@@ -330,7 +330,6 @@ export function Tablero({
       clave: 'Embudo',
       icono: FunnelIcon,
       titulo: 'Comparativa mes a mes',
-      glosa: 'Cada etapa contra su plan, mes a mes.',
       avisa: embudoAvisa,
       contenido: <Embudo serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
     },
@@ -339,9 +338,9 @@ export function Tablero({
       clave: 'Canales',
       icono: MagnetIcon,
       titulo: 'Procedencia y coste de captación',
-      glosa: canalCaro
-        ? `El coste por lead de ${canalCaro.nombre.toLowerCase()} se ha ido por encima del plan.`
-        : 'Lo que cada canal aporta al embudo y lo que hay que pagar por ello.',
+      // Sin subtítulo se pierde la frase que decía QUÉ canal se ha encarecido.
+      // El punto del raíl sigue avisando de que hay algo que mirar, y el
+      // canal concreto se ve al entrar, en su celda.
       avisa: canalCaro !== null,
       contenido: <Canales serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
     },
@@ -349,8 +348,7 @@ export function Tablero({
       id: 'dinero',
       clave: 'Ingresos',
       icono: CoinsIcon,
-      titulo: 'De qué depende el ingreso',
-      glosa: 'Ventas e ingresos recurrentes.',
+      titulo: 'Ventas e ingresos recurrentes',
       avisa: dineroAvisa,
       contenido: <Dinero serie={serieDelTipo} periodoId={periodo.id} />,
     },
@@ -359,8 +357,6 @@ export function Tablero({
       clave: 'Histórico',
       icono: ChartLineIcon,
       titulo: 'Si es un mal mes o una tendencia',
-      glosa:
-        'Un semáforo en ámbar no distingue entre un tropiezo y una caída sostenida. Esto sí.',
       contenido: (
         <Tendencias
           serie={serie}
