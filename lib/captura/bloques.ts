@@ -119,7 +119,7 @@ export function bloquesDe(ids: Iterable<string>): BloqueCaptura[] {
     bloque('ventas', 'Ventas FLECHA', sumandosDe('ventas'), 'ventas'),
     // El orden del panel Dinero, no el del Excel: primero lo ya ganado (las
     // mensualidades) y después lo vendido en el mes. Las ventas ARCO son
-    // contratos y no suman al ingreso; van junto a su importe, «Altas ARCO».
+    // contratos y no suman al ingreso; van junto a su importe, «Ventas ARCO».
     bloque(
       'ingresos',
       'Ingresos',

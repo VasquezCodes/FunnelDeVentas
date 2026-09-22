@@ -126,7 +126,7 @@ const ETAPAS: DefEtapa[] = [
     etapa: 5,
     prefijoCanal: 'Ventas_FLECHA',
     definicion:
-      'Contratos FLECHA firmados en el periodo, contados por su alta (setup). No incluye las mensualidades que esos contratos generan después.',
+      'Contratos FLECHA firmados en el periodo: cuántos, no cuánto. El importe de esas firmas va aparte, en «Ventas FLECHA» del bloque de ingresos.',
   },
 ]
 
@@ -353,7 +353,7 @@ function entradasDeDinero(): EntradaCatalogo[] {
       clave: 'Ventas_FLECHA_Ingreso',
       indicador: {
         id: 'ingreso-flecha-setup',
-        nombre: 'Altas FLECHA',
+        nombre: 'Ventas FLECHA',
         unidad: 'moneda',
         direccion: 'mayor-mejor',
         etapa: null,
@@ -361,7 +361,7 @@ function entradasDeDinero(): EntradaCatalogo[] {
         grupo: 'dinero',
         clave: 'Ventas_FLECHA_Ingreso',
         definicion:
-          'Cuotas de alta de los contratos FLECHA firmados en el mes. Es ingreso de una vez, no recurrente.',
+          'Lo que se cobra de una vez al firmar un contrato FLECHA: la fila «FLECHA Setup (Ventas)» del Excel. No incluye la mensualidad que ese contrato genera después.',
       },
     },
     {
@@ -381,14 +381,15 @@ function entradasDeDinero(): EntradaCatalogo[] {
       clave: 'Ventas_ARCO_Ingreso',
       indicador: {
         id: 'ingreso-arco-setup',
-        nombre: 'Altas ARCO',
+        nombre: 'Ventas ARCO',
         unidad: 'moneda',
         direccion: 'mayor-mejor',
         etapa: null,
         linea: 'arco',
         grupo: 'dinero',
         clave: 'Ventas_ARCO_Ingreso',
-        definicion: 'Cuotas de alta de los contratos ARCO firmados en el mes.',
+        definicion:
+          'Lo que se cobra de una vez al firmar un contrato ARCO: la fila «ARCO Setup (Ventas)» del Excel.',
       },
     },
     {
@@ -409,7 +410,10 @@ function entradasDeDinero(): EntradaCatalogo[] {
       clave: 'Ventas_ARCO',
       indicador: {
         id: 'ventas-arco',
-        nombre: 'Ventas ARCO',
+        // Cuántos contratos, no cuánto dinero. Se llamaba «Ventas ARCO» y ese
+        // nombre es ahora el del importe, que es como lo dice el Excel y como
+        // lo dice el equipo; esta fila se nombra por lo que cuenta.
+        nombre: 'Contratos ARCO',
         unidad: 'cantidad',
         direccion: 'mayor-mejor',
         etapa: null,

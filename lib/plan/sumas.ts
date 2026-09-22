@@ -28,7 +28,7 @@ function idsDonde(condicion: (i: Indicador) => boolean): string[] {
  * Id del total → ids de sus sumandos, en el orden del catálogo.
  *
  * Las ventas ARCO se quedan fuera del ingreso: son contratos, no dinero. Su
- * importe ya entra por «Altas ARCO».
+ * importe ya entra por «Ventas ARCO».
  */
 export const SUMANDOS: ReadonlyMap<string, readonly string[]> = new Map([
   ...['eleads', 'llamadas', 'discoveries', 'propuestas', 'ventas'].map(
