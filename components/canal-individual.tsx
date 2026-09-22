@@ -24,7 +24,12 @@
 
 import { lecturaDe, puntoCalculado, puntoDeComparativa, type PuntoDeSerie, type PuntoFicha } from '@/components/graficos/fichas'
 import { Semaforo } from '@/components/semaforo'
-import { formatearCoste, formatearTasaConversion, formatearValor } from '@/lib/comparacion'
+import {
+  formatearCoste,
+  formatearMultiplicador,
+  formatearTasaConversion,
+  formatearValor,
+} from '@/lib/comparacion'
 import { costePorMil, tasaEntre, tasaReal } from '@/lib/tasas'
 import type { Canal, TasaDelPlan } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
@@ -41,9 +46,18 @@ const PREVIAS: Record<Canal, Array<{ id: string; nombre: string; dinero?: boolea
     { id: 'publicidad-clicks', nombre: 'Clics' },
   ],
   prospeccion: [{ id: 'prospeccion-contactos', nombre: 'Contactos' }],
-  referidos: [{ id: 'referidos-contactos', nombre: 'Contactos' }],
-  afiliados: [{ id: 'afiliados-contactos', nombre: 'Contactos' }],
-  contenido: [{ id: 'contenido-visitas', nombre: 'Visitas' }],
+  referidos: [
+    { id: 'referidos-reactivaciones', nombre: 'Reactivaciones' },
+    { id: 'referidos-contactos', nombre: 'Contactos' },
+  ],
+  afiliados: [
+    { id: 'afiliados-reactivaciones', nombre: 'Reactivaciones' },
+    { id: 'afiliados-contactos', nombre: 'Contactos' },
+  ],
+  contenido: [
+    { id: 'contenido-creacion', nombre: 'Contenidos' },
+    { id: 'contenido-visitas', nombre: 'Visitas' },
+  ],
   newsletter: [
     { id: 'newsletter-envios', nombre: 'Envíos' },
     { id: 'newsletter-aperturas', nombre: 'Aperturas' },
@@ -126,6 +140,14 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
                       plan: costePorMil(buscar(paso.id)?.meta ?? null, buscar(siguiente.id)?.meta ?? null),
                     }
                   : null
+              // Cada tasa con su forma: el CPM en euros; las tres del plan que
+              // son multiplicadores —×30 contactos por reactivación, ×500
+              // visitas por contenido— como tales; el resto, en porcentaje.
+              const formatoDeTasa = cpm
+                ? formatearCoste
+                : tasa?.forma === 'multiplicador'
+                  ? formatearMultiplicador
+                  : formatearTasaConversion
               return (
                 <li key={paso.id} className="contents">
                   <Paso
@@ -147,8 +169,7 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
                             }
                           : null)
                       }
-                      // El CPM es un precio: va en euros, no en porcentaje.
-                      formatear={cpm ? formatearCoste : formatearTasaConversion}
+                      formatear={formatoDeTasa}
                       color={color}
                     />
                   )}

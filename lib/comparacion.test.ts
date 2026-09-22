@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ETIQUETAS_ESTADO, calcularEstado } from '@/lib/comparacion'
+import { ETIQUETAS_ESTADO, calcularEstado, formatearValor } from '@/lib/comparacion'
 
 /**
  * Los cuatro tramos, sobre una base de 100 % del plan. Es la escala que pidió
@@ -81,5 +81,23 @@ describe('ETIQUETAS_ESTADO', () => {
       fuera: 'Fuera del plan',
       'sin-dato': 'Sin dato',
     })
+  })
+})
+
+describe('formatearValor, cantidades', () => {
+  it('un entero va sin decimales: son leads, llamadas, clics', () => {
+    expect(formatearValor(95880, 'cantidad')).toBe('95.880')
+    expect(formatearValor(0, 'cantidad')).toBe('0')
+  })
+
+  it('una cantidad con decimales los enseña: el plan tiene 1,17 reactivaciones', () => {
+    // Redondeada a entero salía «1 de 1» con «Cerca del plan» al lado: la
+    // cifra decía que cuadraba y el juicio decía que no.
+    expect(formatearValor(1.17, 'cantidad')).toBe('1,17')
+    expect(formatearValor(0.7, 'cantidad')).toBe('0,7')
+  })
+
+  it('el juicio no cambia: sigue saliendo de las cifras sin redondear', () => {
+    expect(calcularEstado(1 / 1.17, 'mayor-mejor')).toBe('cerca')
   })
 })

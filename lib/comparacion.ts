@@ -89,6 +89,19 @@ const FORMATO_CANTIDAD = formato({
   maximumFractionDigits: 0,
 })
 
+/**
+ * Cantidades con parte decimal. Casi todo lo que se cuenta aquí son enteros
+ * —leads, llamadas, clics— y escribirlos con decimales sería ruido. Pero el
+ * plan tiene cifras que no lo son: 1,17 reactivaciones al mes, 0,7
+ * contenidos. Redondeadas a entero, una reactivación sobre un plan de 1,17
+ * se enseñaba como «1 de 1» con la etiqueta «Cerca del plan» al lado: la
+ * cifra decía que cuadraba y el juicio decía que no. El juicio tenía razón
+ * —es un 85 %—, así que lo que se arregla es la cifra.
+ */
+const FORMATO_CANTIDAD_DECIMAL = formato({
+  maximumFractionDigits: 2,
+})
+
 const FORMATO_MONEDA = formato({
   style: 'currency',
   currency: 'EUR',
@@ -161,7 +174,9 @@ export function formatearValor(valor: number | null | undefined, unidad: Unidad)
       return conMenosTipografico(FORMATO_DECIMAL_1.format(valor)) + ESPACIO_DURO + '%'
     case 'cantidad':
     default:
-      return conMenosTipografico(FORMATO_CANTIDAD.format(valor))
+      return conMenosTipografico(
+        (Number.isInteger(valor) ? FORMATO_CANTIDAD : FORMATO_CANTIDAD_DECIMAL).format(valor),
+      )
   }
 }
 
