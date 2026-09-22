@@ -92,6 +92,7 @@ import { costePorMil, tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
 import { bloquesDe, bloquesPorCanalDe, type BloqueCaptura } from '@/lib/captura/bloques'
 import { completarTotales } from '@/lib/captura/totales'
+import { ETAPAS_DEL_EMBUDO } from '@/lib/plan/catalogo'
 import { idsCapturables, totalesCalculadosEn } from '@/lib/plan/sumas'
 import {
   PATRON_ENTRADA,
@@ -755,22 +756,60 @@ export function CapturaManual({
     const previas = todas.filter((i) => i.grupo === 'insumo')
     const resto = todas.filter((i) => i.grupo !== 'insumo')
     const tasasPrevias = tasas.filter((t) => t.canal === canal && porId.get(t.desde)?.grupo === 'insumo')
-    // Cada tasa bajo su etapa de origen, si el canal tiene también la de destino.
+    /**
+     * La tasa que sale de esta fila: la que la une con la etapa siguiente de
+     * su mismo canal, si el libro reparte las dos.
+     *
+     * Estaba escrita a mano y solo cubría dos pasos —de leads a llamadas y de
+     * llamadas a discoveries—, así que de Discoveries a Ventas no aparecía
+     * nada: ni la tasa de propuestas ni la de cierre, que son las dos del
+     * final del embudo. Ahora recorre las etapas del catálogo, así que una
+     * etapa nueva entra sola.
+     *
+     * Solo la etapa INMEDIATAMENTE siguiente: si el libro no la reparte por
+     * canal, no hay tasa que enseñar y la fila va sin banda. Saltársela para
+     * llegar a la de después sería inventar una conversión que nadie mide.
+     */
     const tasaTras = (indicador: Indicador) => {
-      if (indicador.desglosaA === 'eleads') return tasaEntre(tasas, indicador.id, `llamadas.${canal}`)
-      if (indicador.desglosaA === 'llamadas' && porId.has(`discoveries.${canal}`)) {
-        return tasaEntre(tasas, indicador.id, `discoveries.${canal}`)
-      }
-      return undefined
+      const posicion = ETAPAS_DEL_EMBUDO.findIndex((e) => e.id === indicador.desglosaA)
+      const siguiente = posicion < 0 ? undefined : ETAPAS_DEL_EMBUDO[posicion + 1]
+      if (!siguiente) return undefined
+      const destino = `${siguiente.id}.${canal}`
+      return porId.has(destino) ? tasaEntre(tasas, indicador.id, destino) : undefined
     }
     return (
       <>
-        {/* Cada variable previa con la tasa que sale de ella, y no todas las
-            tasas juntas al final: la cadena del canal es «impresiones ─CTR→
-            clics ─CVR→ leads», y leerla en ese orden es lo que explica de
-            dónde sale cada cifra. Agrupadas, había que ir y volver. */}
-        {previas.map((indicador) => {
-          const tasa = tasasPrevias.find((t) => t.desde === indicador.id)
+        {previasConTasas(bloque, previas, tasasPrevias)}
+        {resto.map((indicador) => {
+          const tasa = tasaTras(indicador)
+          return (
+            <Fragment key={indicador.id}>
+              {fila(bloque, indicador)}
+              {tasa && bandaTasa(tasa)}
+            </Fragment>
+          )
+        })}
+      </>
+    )
+  }
+
+  /**
+   * Las variables previas de un canal con sus tasas INTERCALADAS: cada fila
+   * seguida de la que sale de ella. Las dos vistas de la captura —por etapa
+   * y por canal— pintan lo mismo aquí, y antes cada una lo hacía a su
+   * manera: la de etapa apilaba las tasas al final del canal, así que
+   * «Link CTR» y «CVR Publicidad» salían juntas después de los clics en vez
+   * de entre las filas que unen.
+   */
+  function previasConTasas(
+    bloque: BloqueCaptura,
+    filas: readonly Indicador[],
+    tasasDelGrupo: readonly TasaDelPlan[],
+  ) {
+    return (
+      <>
+        {filas.map((indicador) => {
+          const tasa = tasasDelGrupo.find((t) => t.desde === indicador.id)
           return (
             <Fragment key={indicador.id}>
               {fila(bloque, indicador)}
@@ -783,18 +822,9 @@ export function CapturaManual({
         })}
         {/* Una tasa cuyo origen no es ninguna de las filas de arriba se
             quedaría sin pintar: va detrás, que es mejor que perderla. */}
-        {tasasPrevias
-          .filter((t) => !previas.some((i) => i.id === t.desde))
+        {tasasDelGrupo
+          .filter((t) => !filas.some((i) => i.id === t.desde))
           .map((tasa) => bandaTasa(tasa))}
-        {resto.map((indicador) => {
-          const tasa = tasaTras(indicador)
-          return (
-            <Fragment key={indicador.id}>
-              {fila(bloque, indicador)}
-              {tasa && bandaTasa(tasa)}
-            </Fragment>
-          )
-        })}
       </>
     )
   }
@@ -816,8 +846,7 @@ export function CapturaManual({
               {grupo.titulo}
             </p>
           )}
-          {filas.map((indicador) => fila(bloque, indicador))}
-          {tasasDelGrupo.map((tasa) => bandaTasa(tasa))}
+          {canal ? previasConTasas(bloque, filas, tasasDelGrupo) : filas.map((indicador) => fila(bloque, indicador))}
         </div>
       )
     })
