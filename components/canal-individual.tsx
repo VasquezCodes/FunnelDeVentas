@@ -25,13 +25,18 @@
 import { lecturaDe, puntoCalculado, puntoDeComparativa, type PuntoDeSerie, type PuntoFicha } from '@/components/graficos/fichas'
 import { Semaforo } from '@/components/semaforo'
 import { formatearCoste, formatearTasaConversion, formatearValor } from '@/lib/comparacion'
-import { tasaEntre, tasaReal } from '@/lib/tasas'
+import { costePorMil, tasaEntre, tasaReal } from '@/lib/tasas'
 import type { Canal, TasaDelPlan } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 
-/** La materia prima de cada canal antes de sus leads, en orden. */
-const PREVIAS: Record<Canal, Array<{ id: string; nombre: string }>> = {
+/**
+ * La materia prima de cada canal antes de sus leads, en el orden de la
+ * cadena: de lo que se pone a lo que sale. En publicidad eso empieza por el
+ * dinero, que es lo que compra las impresiones.
+ */
+const PREVIAS: Record<Canal, Array<{ id: string; nombre: string; dinero?: boolean }>> = {
   publicidad: [
+    { id: 'publicidad-inversion', nombre: 'Inversión', dinero: true },
     { id: 'publicidad-impresiones', nombre: 'Impresiones' },
     { id: 'publicidad-clicks', nombre: 'Clics' },
   ],
@@ -47,6 +52,7 @@ const PREVIAS: Record<Canal, Array<{ id: string; nombre: string }>> = {
 }
 
 const cantidad = (n: number) => formatearValor(n, 'cantidad')
+const dinero = (n: number) => formatearValor(n, 'moneda')
 const coste = (n: number) => formatearCoste(n)
 
 export interface DetalleCanalProps {
@@ -107,22 +113,39 @@ export function DetalleCanal({ canal, nombre, color, actual, tasas }: DetalleCan
             {pasos.map((paso, i) => {
               const siguiente = pasos[i + 1]
               const tasa = siguiente ? tasaEntre(tasas, paso.id, siguiente.id) : undefined
+              // Entre la inversión y las impresiones no hay una tasa del
+              // Excel sino el CPM, que se deriva de esas dos filas.
+              const cpm =
+                paso.id === 'publicidad-inversion' && siguiente?.id === 'publicidad-impresiones'
+                  ? {
+                      nombre: 'CPM',
+                      real: costePorMil(buscar(paso.id)?.real ?? null, buscar(siguiente.id)?.real ?? null),
+                      plan: costePorMil(buscar(paso.id)?.meta ?? null, buscar(siguiente.id)?.meta ?? null),
+                    }
+                  : null
               return (
                 <li key={paso.id} className="contents">
-                  <Paso nombre={paso.nombre} punto={punto(paso.id)} />
+                  <Paso
+                    nombre={paso.nombre}
+                    punto={punto(paso.id)}
+                    formatear={paso.dinero ? dinero : cantidad}
+                  />
                   {/* Sin tasa en el Excel (hacia ventas no la hay por canal),
                       la flecha va sola: no se inventa una cifra. */}
                   {siguiente && (
                     <Flecha
                       tasa={
-                        tasa
+                        cpm ??
+                        (tasa
                           ? {
                               nombre: tasa.nombre,
                               real: tasaReal(buscar(paso.id)?.real ?? null, buscar(siguiente.id)?.real ?? null),
                               plan: tasa.plan,
                             }
-                          : null
+                          : null)
                       }
+                      // El CPM es un precio: va en euros, no en porcentaje.
+                      formatear={cpm ? formatearCoste : formatearTasaConversion}
                       color={color}
                     />
                   )}
@@ -167,8 +190,16 @@ function Cifra({
 }
 
 /** Un paso de la cadena: su cifra real y su plan, con el juicio. */
-function Paso({ nombre, punto }: { nombre: string; punto: PuntoFicha }) {
-  const lectura = lecturaDe(cantidad, 'de', punto)
+function Paso({
+  nombre,
+  punto,
+  formatear = cantidad,
+}: {
+  nombre: string
+  punto: PuntoFicha
+  formatear?: (n: number) => string
+}) {
+  const lectura = lecturaDe(formatear, 'de', punto)
   return (
     <div
       // Ancho suficiente para que quepa la palabra más larga del semáforo
@@ -198,9 +229,12 @@ function Paso({ nombre, punto }: { nombre: string; punto: PuntoFicha }) {
 function Flecha({
   tasa,
   color,
+  formatear = formatearTasaConversion,
 }: {
   tasa: { nombre: string; real: number | null; plan: number | null } | null
   color: string
+  /** Cómo se escribe la cifra: un porcentaje casi siempre, euros en el CPM. */
+  formatear?: (valor: number | null) => string
 }) {
   return (
     <div className="flex w-30 shrink-0 flex-col items-center justify-center px-2 text-center">
@@ -208,7 +242,7 @@ function Flecha({
         <>
           <span className="text-[0.6875rem] leading-tight text-muted-foreground">{tasa.nombre}</span>
           <span className="mt-1 text-sm font-semibold text-foreground tabular-nums">
-            {formatearTasaConversion(tasa.real)}
+            {formatear(tasa.real)}
           </span>
         </>
       )}
@@ -218,7 +252,7 @@ function Flecha({
       </svg>
       {tasa && (
         <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-          {tasa.plan === null ? 'sin plan' : `plan ${formatearTasaConversion(tasa.plan)}`}
+          {tasa.plan === null ? 'sin plan' : `plan ${formatear(tasa.plan)}`}
         </span>
       )}
     </div>
