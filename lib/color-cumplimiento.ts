@@ -4,9 +4,10 @@
  * Lo pidió el usuario para el Dinero: que arranque en rojo, se vaya
  * convirtiendo en amarillo y termine en verde. Hay dos lecturas:
  *
- *  - Las franjas (`franjaDeCumplimiento`) son las del semáforo
- *    (`UMBRALES_POR_DEFECTO`): rojo con «Fuera de plan», ámbar con «Al
- *    límite», verde con «En plan».
+ *  - Las franjas (`franjaDeCumplimiento`) SON las del semáforo: la misma
+ *    función, para que el color y la palabra no puedan discrepar. Rojo con
+ *    «Fuera del plan», ámbar con «Cerca del plan», verde con «En plan» y el
+ *    verde más marcado con «Mejor que el plan».
  *  - La escala continua (`colorEnPosicion`, `degradadoDeCumplimiento`) es el
  *    avance hacia el plan, y cambia de color desde el primer momento. Antes
  *    seguía las franjas y un 68 % salía rojo de punta a punta; el usuario lo
@@ -18,24 +19,29 @@
  * no hex: el tema oscuro trae sus propios tonos.
  */
 
-import { UMBRALES_POR_DEFECTO } from '@/lib/tipos'
+import type { Estado } from '@/lib/tipos'
+import { calcularEstado } from '@/lib/comparacion'
 
-export type Franja = 'critico' | 'alerta' | 'ok' | 'ok-fuerte' | 'sin-dato'
-
-const TOKEN: Record<Franja, string> = {
-  critico: 'var(--estado-critico)',
-  alerta: 'var(--estado-alerta)',
-  ok: 'var(--estado-ok)',
-  'ok-fuerte': 'var(--estado-ok-fuerte)',
+const TOKEN: Record<Estado, string> = {
+  mejor: 'var(--estado-ok-fuerte)',
+  'en-plan': 'var(--estado-ok)',
+  cerca: 'var(--estado-alerta)',
+  fuera: 'var(--estado-critico)',
   'sin-dato': 'var(--estado-neutro)',
 }
 
-export function franjaDeCumplimiento(cumplimiento: number | null): Franja {
-  if (cumplimiento === null || !Number.isFinite(cumplimiento)) return 'sin-dato'
-  if (cumplimiento >= 1) return 'ok-fuerte'
-  if (cumplimiento >= UMBRALES_POR_DEFECTO.ok) return 'ok'
-  if (cumplimiento >= UMBRALES_POR_DEFECTO.alerta) return 'alerta'
-  return 'critico'
+/**
+ * La franja de un cumplimiento ES su estado del semáforo, calculado con el
+ * mismo motor. Antes había aquí una escala propia —'critico' | 'alerta' |
+ * 'ok' | 'ok-fuerte'— con sus propios cortes, y una prueba se encargaba de
+ * vigilar que no contradijera a la palabra que se enseñaba al lado. Dos
+ * vocabularios para lo mismo es una contradicción esperando a pasar: ahora
+ * no puede haberla, porque es el mismo.
+ *
+ * Siempre 'mayor-mejor': esto colorea el ingreso, donde más es más.
+ */
+export function franjaDeCumplimiento(cumplimiento: number | null): Estado {
+  return calcularEstado(cumplimiento, 'mayor-mejor')
 }
 
 /** El color sólido de la franja de un cumplimiento. */
@@ -49,10 +55,10 @@ export function colorDeCumplimiento(cumplimiento: number | null): string {
  * al plan, el verde se hace más intenso.
  */
 const PARADAS: Array<{ posicion: number; color: string }> = [
-  { posicion: 0, color: TOKEN.critico },
-  { posicion: 0.6, color: TOKEN.alerta },
-  { posicion: 0.9, color: TOKEN.ok },
-  { posicion: 1, color: TOKEN['ok-fuerte'] },
+  { posicion: 0, color: TOKEN.fuera },
+  { posicion: 0.6, color: TOKEN.cerca },
+  { posicion: 0.9, color: TOKEN['en-plan'] },
+  { posicion: 1, color: TOKEN.mejor },
 ]
 
 /**

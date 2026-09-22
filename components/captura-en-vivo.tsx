@@ -7,8 +7,8 @@
  * Es un gráfico de barras sencillo, a propósito. Cada fila es una barra con
  * su porcentaje del plan, sobre una escala común en la que una raya fina
  * marca el 100 %. Llegar a la raya es cumplir; pasarla es hacer más de lo
- * previsto. El color es el juicio (verde en plan, ámbar al límite, rojo
- * fuera de plan) y siempre va con su palabra al lado: el color nunca viaja
+ * previsto. El color es el juicio (verde en plan, ámbar cerca del plan, rojo
+ * fuera del plan) y siempre va con su palabra al lado: el color nunca viaja
  * solo.
  *
  * Se recalcula en cada pulsación, así que quien captura ve al momento si lo

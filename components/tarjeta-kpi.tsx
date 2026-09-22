@@ -48,8 +48,8 @@ export function TarjetaKpi({ c, destacada = false, className }: TarjetaKpiProps)
     favorable === null
       ? 'var(--muted-foreground)' // desviación 0 o sin dato: ni premio ni castigo
       : favorable
-        ? varEstado('ok')
-        : varEstado('critico')
+        ? varEstado('en-plan')
+        : varEstado('fuera')
 
   /**
    * Barra de cumplimiento.

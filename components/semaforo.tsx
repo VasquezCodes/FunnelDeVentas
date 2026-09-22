@@ -16,7 +16,8 @@
  *
  * ── Una sola voz ─────────────────────────────────────────────────────────
  * Las palabras son las de `ETIQUETAS_ESTADO` ('@/lib/comparacion'): En
- * plan, Al límite, Fuera de plan y Sin dato, en el tablero y en la captura.
+ * Mejor que el plan, En plan, Cerca del plan, Fuera del plan y Sin dato, en
+ * el tablero y en la captura.
  * Hablan de *plan*, no de calidad: el tablero compara contra un plan de
  * negocio, y «fuera de plan» describe un hecho mientras que «crítico»
  * emitiría un juicio que el dato solo no sostiene. Hubo un segundo juego en
@@ -51,9 +52,13 @@ import type { Estado } from '@/lib/tipos'
  * de dato no parezca un juicio.
  */
 const TOKEN_FUERTE: Record<Estado, string> = {
-  ok: '--estado-ok',
-  alerta: '--estado-alerta',
-  critico: '--estado-critico',
+  // Por encima del plan va el verde más marcado, el mismo que el anillo del
+  // Dinero usa para el plan cumplido entero: se distingue de «en plan» sin
+  // estrenar un color que habría que explicar.
+  mejor: '--estado-ok-fuerte',
+  'en-plan': '--estado-ok',
+  cerca: '--estado-alerta',
+  fuera: '--estado-critico',
   'sin-dato': '--estado-neutro',
 }
 
@@ -63,9 +68,10 @@ const TOKEN_FUERTE: Record<Estado, string> = {
  * apoya en la superficie neutra del chasis.
  */
 const TOKEN_SUAVE: Record<Estado, string> = {
-  ok: '--estado-ok-suave',
-  alerta: '--estado-alerta-suave',
-  critico: '--estado-critico-suave',
+  mejor: '--estado-ok-suave',
+  'en-plan': '--estado-ok-suave',
+  cerca: '--estado-alerta-suave',
+  fuera: '--estado-critico-suave',
   'sin-dato': '--muted',
 }
 
@@ -87,8 +93,9 @@ export function varEstadoSuave(estado: Estado): string {
 // ── Marca ───────────────────────────────────────────────────────────────
 
 /**
- * Cada estado con su silueta, maciza y pequeña: círculo en plan, triángulo
- * al límite, cuadrado fuera de plan y círculo hueco sin dato. Es la
+ * Cada estado con su silueta, maciza y pequeña: rombo por encima del plan,
+ * círculo en plan, triángulo cerca del plan, cuadrado fuera de plan y
+ * círculo hueco sin dato. Es la
  * convención de los informes que marcan el rojo, el ámbar y el verde con
  * forma además de color: la forma sola ya los separa, sin color y sin texto.
  *
@@ -105,13 +112,16 @@ function Marca({ estado, lado }: { estado: Estado; lado: string }) {
       style={{ width: lado, height: lado }}
       fill="currentColor"
     >
-      {estado === 'ok' && <circle cx="5" cy="5" r="4.5" />}
+      {/* Un rombo: la única silueta que no se confunde con el círculo de
+          «en plan» ni con el cuadrado de «fuera» a este tamaño. */}
+      {estado === 'mejor' && <path d="M5 0.4 9.6 5 5 9.6 0.4 5Z" />}
+      {estado === 'en-plan' && <circle cx="5" cy="5" r="4.5" />}
       {/* El trazo del mismo color redondea las puntas: a este tamaño, un
           triángulo de esquinas vivas se pixela. */}
-      {estado === 'alerta' && (
+      {estado === 'cerca' && (
         <path d="M5 0.7 9.6 8.9 0.4 8.9Z" stroke="currentColor" strokeWidth="0.9" strokeLinejoin="round" />
       )}
-      {estado === 'critico' && <rect x="1.1" y="1.1" width="7.8" height="7.8" rx="0.6" />}
+      {estado === 'fuera' && <rect x="1.1" y="1.1" width="7.8" height="7.8" rx="0.6" />}
       {estado === 'sin-dato' && (
         <circle cx="5" cy="5" r="3.9" fill="none" stroke="currentColor" strokeWidth="1.4" />
       )}
@@ -143,7 +153,11 @@ export function Semaforo({ estado, cumplimiento = null, tamano = 'sm', className
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center whitespace-nowrap',
+        // Envuelve en vez de desbordar: las palabras son largas («Mejor que
+        // el plan») y esto vive en sitios estrechos, como las tarjetas de la
+        // cadena de un canal. Cada parte es atómica y no se parte por dentro;
+        // lo que cae a la línea siguiente es el porcentaje.
+        'inline-flex flex-wrap items-center gap-y-0.5',
         pequeno ? 'text-xs' : 'text-[0.8125rem]',
         // Después del tamaño: `cn` fusiona como tailwind-merge y un tamaño
         // escrito detrás anularía el interlineado.
@@ -155,7 +169,10 @@ export function Semaforo({ estado, cumplimiento = null, tamano = 'sm', className
           codificación que sobrevive a cualquier daltonismo, a una impresión
           en blanco y negro y a un lector de pantalla. */}
       <span
-        className={cn('inline-flex items-center font-medium', pequeno ? 'gap-1.5' : 'gap-2')}
+        className={cn(
+          'inline-flex items-center font-medium whitespace-nowrap',
+          pequeno ? 'gap-1.5' : 'gap-2',
+        )}
         style={{ color: varEstado(estado) }}
       >
         <Marca estado={estado} lado={pequeno ? '0.4375rem' : '0.5rem'} />
@@ -166,7 +183,9 @@ export function Semaforo({ estado, cumplimiento = null, tamano = 'sm', className
         // La cifra en tinta, como el resto de cifras de la hoja: el juicio lo
         // pone la palabra; el número es un dato. Tabular, para que al cambiar
         // de periodo no cambie de ancho ni dé un salto.
-        <span className={cn('text-foreground tabular-nums', pequeno ? 'ml-2' : 'ml-2.5')}>
+        <span
+          className={cn('whitespace-nowrap text-foreground tabular-nums', pequeno ? 'ml-2' : 'ml-2.5')}
+        >
           {formatearCumplimiento(cumplimiento)}
         </span>
       )}

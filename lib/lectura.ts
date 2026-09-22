@@ -72,7 +72,13 @@ export function leer(
   conversiones: readonly Conversion[],
   cabeceraId = 'ingreso-total',
 ): Lectura {
-  const reparto: Record<Estado, number> = { ok: 0, alerta: 0, critico: 0, 'sin-dato': 0 }
+  const reparto: Record<Estado, number> = {
+    mejor: 0,
+    'en-plan': 0,
+    cerca: 0,
+    fuera: 0,
+    'sin-dato': 0,
+  }
   for (const c of comparativas) reparto[c.estado] += 1
 
   const conDato = comparativas.filter((c) => c.estado !== 'sin-dato')
@@ -129,10 +135,10 @@ export function leer(
     }
   } else if (hayEstrechamiento && estrechamiento) {
     detalle = `El volumen de entrada acompaña, pero se pierde al pasar de ${estrechamiento.desde.nombre.toLowerCase()} a ${estrechamiento.hacia.nombre.toLowerCase()}.`
-  } else if (reparto.critico > 0) {
-    detalle = `${reparto.critico} ${reparto.critico === 1 ? 'indicador está' : 'indicadores están'} fuera de plan.`
-  } else if (reparto.alerta > 0) {
-    detalle = `${reparto.alerta} ${reparto.alerta === 1 ? 'indicador está' : 'indicadores están'} al límite.`
+  } else if (reparto.fuera > 0) {
+    detalle = `${reparto.fuera} ${reparto.fuera === 1 ? 'indicador está' : 'indicadores están'} fuera del plan.`
+  } else if (reparto.cerca > 0) {
+    detalle = `${reparto.cerca} ${reparto.cerca === 1 ? 'indicador se queda cerca' : 'indicadores se quedan cerca'} del plan.`
   } else {
     detalle = 'Todos los indicadores con dato están en plan.'
   }

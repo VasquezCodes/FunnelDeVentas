@@ -43,9 +43,10 @@ const ESPACIO_DURO = ' '
  * sería un juicio que el dato solo no sostiene.
  */
 export const ETIQUETAS_ESTADO: Record<Estado, string> = {
-  ok: 'En plan',
-  alerta: 'Al límite',
-  critico: 'Fuera de plan',
+  mejor: 'Mejor que el plan',
+  'en-plan': 'En plan',
+  cerca: 'Cerca del plan',
+  fuera: 'Fuera del plan',
   'sin-dato': 'Sin dato',
 }
 
@@ -239,9 +240,10 @@ export function calcularEstado(
 
   const efectivo = direccion === 'menor-mejor' ? 2 - cumplimiento : cumplimiento
 
-  if (efectivo >= umbrales.ok) return 'ok'
-  if (efectivo >= umbrales.alerta) return 'alerta'
-  return 'critico'
+  if (efectivo > umbrales.mejor) return 'mejor'
+  if (efectivo >= umbrales.enPlan) return 'en-plan'
+  if (efectivo >= umbrales.cerca) return 'cerca'
+  return 'fuera'
 }
 
 // ── Comparación ─────────────────────────────────────────────────────────
@@ -371,7 +373,13 @@ function dividirSeguro(numerador: number | null, denominador: number | null): nu
  * («3 en plan · 1 al límite · 1 fuera de plan»), que debe leerse sin scroll.
  */
 export function resumirEstados(comparativas: readonly Comparativa[]): Record<Estado, number> {
-  const resumen: Record<Estado, number> = { ok: 0, alerta: 0, critico: 0, 'sin-dato': 0 }
+  const resumen: Record<Estado, number> = {
+    mejor: 0,
+    'en-plan': 0,
+    cerca: 0,
+    fuera: 0,
+    'sin-dato': 0,
+  }
   for (const c of comparativas) resumen[c.estado] += 1
   return resumen
 }

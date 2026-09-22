@@ -11,18 +11,16 @@ import { calcularEstado } from '@/lib/comparacion'
 describe('franjaDeCumplimiento', () => {
   it('usa los umbrales del semáforo, y el plan cumplido es «más verde»', () => {
     expect(franjaDeCumplimiento(null)).toBe('sin-dato')
-    expect(franjaDeCumplimiento(0.3)).toBe('critico')
-    expect(franjaDeCumplimiento(0.8)).toBe('alerta')
-    expect(franjaDeCumplimiento(0.95)).toBe('ok')
-    expect(franjaDeCumplimiento(1)).toBe('ok-fuerte')
-    expect(franjaDeCumplimiento(1.3)).toBe('ok-fuerte')
+    expect(franjaDeCumplimiento(0.3)).toBe('fuera')
+    expect(franjaDeCumplimiento(0.8)).toBe('cerca')
+    expect(franjaDeCumplimiento(0.95)).toBe('en-plan')
+    expect(franjaDeCumplimiento(1)).toBe('en-plan')
+    expect(franjaDeCumplimiento(1.3)).toBe('mejor')
   })
 
-  it('nunca contradice la palabra del semáforo', () => {
+  it('nunca contradice la palabra del semáforo, por construcción', () => {
     for (let c = 0; c <= 1.5; c += 0.01) {
-      const franja = franjaDeCumplimiento(c)
-      const estado = calcularEstado(c, 'mayor-mejor')
-      expect(franja === 'ok-fuerte' ? 'ok' : franja).toBe(estado)
+      expect(franjaDeCumplimiento(c)).toBe(calcularEstado(c, 'mayor-mejor'))
     }
   })
 })

@@ -169,13 +169,40 @@ export interface Real {
 
 // ── Comparación ─────────────────────────────────────────────────────────
 
-export type Estado = 'ok' | 'alerta' | 'critico' | 'sin-dato'
+/**
+ * Cómo va un indicador contra su plan. Cuatro tramos y la ausencia de dato.
+ *
+ * Los nombres dicen lo que se lee en pantalla, no un juicio de calidad: en
+ * este tablero todo se mide contra el plan, y «fuera de plan» es un hecho.
+ * Antes eran 'ok' | 'alerta' | 'critico', que sonaban a incidencia de
+ * sistema y además se quedaban cortos: cualquier cosa por encima del 95 %
+ * era lo mismo, y cerrar al 96 % no es cerrar al 140 %.
+ */
+export type Estado = 'mejor' | 'en-plan' | 'cerca' | 'fuera' | 'sin-dato'
 
+/**
+ * Los cortes entre tramos, sobre una base de 100 % del plan:
+ *
+ *     ── 'mejor'    más de un 5 % por encima
+ *     1,05
+ *     ── 'en-plan'  el 5 % de arriba y de abajo
+ *     0,95
+ *     ── 'cerca'    entre un 5 % y un 20 % por debajo
+ *     0,80
+ *     ── 'fuera'    más de un 20 % por debajo
+ *
+ * En un indicador 'menor-mejor' —el gasto— la escala es la misma pero por
+ * el otro lado: gastar más de un 20 % de lo previsto es estar fuera de
+ * plan, y gastar más de un 5 % por debajo es mejor que el plan. De eso se
+ * encarga `calcularEstado`, que refleja el cumplimiento antes de medirlo.
+ */
 export interface Umbrales {
-  /** Cumplimiento >= este valor ⇒ 'ok'. Ej. 0.95 */
-  ok: number
-  /** Cumplimiento >= este valor ⇒ 'alerta'. Por debajo ⇒ 'critico'. Ej. 0.8 */
-  alerta: number
+  /** Por encima de este valor, mejor que el plan. Ej. 1.05 */
+  mejor: number
+  /** Desde este valor y hasta `mejor`, en plan. Ej. 0.95 */
+  enPlan: number
+  /** Desde este valor y hasta `enPlan`, cerca del plan. Por debajo, fuera. Ej. 0.8 */
+  cerca: number
 }
 
 export interface Comparativa {
@@ -241,4 +268,4 @@ export interface FuenteDatos {
   tasas(): Promise<TasaDelPlan[]>
 }
 
-export const UMBRALES_POR_DEFECTO: Umbrales = { ok: 0.95, alerta: 0.8 }
+export const UMBRALES_POR_DEFECTO: Umbrales = { mejor: 1.05, enPlan: 0.95, cerca: 0.8 }

@@ -171,7 +171,9 @@ function Paso({ nombre, punto }: { nombre: string; punto: PuntoFicha }) {
   const lectura = lecturaDe(cantidad, 'de', punto)
   return (
     <div
-      className="flex min-w-30 flex-1 flex-col rounded-xl px-4 py-3"
+      // Ancho suficiente para que quepa la palabra más larga del semáforo
+      // («Mejor que el plan») sin partirla.
+      className="flex min-w-38 flex-1 flex-col rounded-xl px-4 py-3"
       style={{ backgroundColor: 'color-mix(in oklab, var(--foreground) 3.5%, transparent)' }}
     >
       <span className="text-xs text-muted-foreground">{nombre}</span>

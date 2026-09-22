@@ -24,7 +24,7 @@ import { ETIQUETAS_ESTADO, formatearCumplimiento } from '@/lib/comparacion'
 import { Semaforo, varEstado, varEstadoSuave } from '@/components/semaforo'
 
 /** Orden de la tira: de lo bueno a lo que falta. Es el orden en que se cuenta. */
-const ORDEN_ESTADOS: Estado[] = ['ok', 'alerta', 'critico', 'sin-dato']
+const ORDEN_ESTADOS: Estado[] = ['mejor', 'en-plan', 'cerca', 'fuera', 'sin-dato']
 
 export interface VeredictoProps {
   lectura: Lectura
