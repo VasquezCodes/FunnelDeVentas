@@ -33,6 +33,7 @@ import { filasDeCanal, canalMasDeteriorado } from '@/lib/canales'
 import { idsDeQuincenas } from '@/lib/reales/mes'
 
 import { Chasis, type Vista } from '@/components/chasis'
+import { periodoInicial } from '@/components/periodo-inicial'
 import { SelectorPeriodo } from '@/components/selector-periodo'
 import { CabeceraMes } from '@/components/cabecera-mes'
 import { Carrusel, type Panel } from '@/components/carrusel'
@@ -99,20 +100,11 @@ export function Tablero({
     [periodos, realesPorPeriodo],
   )
 
-  /**
-   * Se abre en el último periodo CON resultado, no en el último del plan.
-   * El plan llega a diciembre de 2028 y solo unos pocos meses están
-   * capturados: arrancar en el último sería abrir en una página en blanco.
-   *
-   * Sin ningún resultado —el primer día con Firebase, antes de capturar
-   * nada—, se abre en el periodo de hoy, que es el que alguien viene a
-   * capturar.
-   */
-  const periodoPorDefecto = useMemo(() => {
-    const conReal = porTipo.find((p) => conDato.has(p.id))
-    const deHoy = hoy ? porTipo.find((p) => p.inicio <= hoy && hoy <= p.fin) : undefined
-    return conReal?.id ?? deHoy?.id ?? porTipo[0]?.id ?? ''
-  }, [porTipo, conDato, hoy])
+  /** Se abre en el periodo de hoy. El porqué y sus respaldos, en el módulo. */
+  const periodoPorDefecto = useMemo(
+    () => periodoInicial(porTipo, conDato, hoy),
+    [porTipo, conDato, hoy],
+  )
 
   const [periodoId, setPeriodoId] = useState<string>(periodoPorDefecto)
 
@@ -127,7 +119,7 @@ export function Tablero({
    *
    * Lo que se espera es quedarse donde estabas, solo que con otro grano. Por
    * eso se busca primero un periodo del MISMO mes; solo si no lo hay se cae
-   * al último con resultado, y al primero de la lista como último recurso.
+   * al periodo por defecto, que es el de hoy.
    *
    * Se corrige durante el render y no en un efecto, que es el patrón que
    * documenta React para ajustar estado derivado: así no se llega a pintar un
@@ -139,7 +131,7 @@ export function Tablero({
     (anterior
       ? porTipo.find((p) => p.anio === anterior.anio && p.mes === anterior.mes)
       : undefined) ??
-    porTipo.find((p) => conDato.has(p.id)) ??
+    porTipo.find((p) => p.id === periodoPorDefecto) ??
     porTipo[0]
 
   if (periodo && periodo.id !== periodoId) setPeriodoId(periodo.id)
