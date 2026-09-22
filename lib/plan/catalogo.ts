@@ -410,10 +410,10 @@ function entradasDeDinero(): EntradaCatalogo[] {
       clave: 'Ventas_ARCO',
       indicador: {
         id: 'ventas-arco',
-        // Cuántos contratos, no cuánto dinero. Se llamaba «Ventas ARCO» y ese
-        // nombre es ahora el del importe, que es como lo dice el Excel y como
-        // lo dice el equipo; esta fila se nombra por lo que cuenta.
-        nombre: 'Contratos ARCO',
+        // Cuántos contratos, no cuánto dinero. «Ventas ARCO» es ahora el
+        // nombre del importe —el dinero que entra por firmarlos—, así que
+        // esta, que es la cuenta, se llama como la llama el equipo.
+        nombre: 'Setup ARCO',
         unidad: 'cantidad',
         direccion: 'mayor-mejor',
         etapa: null,
@@ -421,7 +421,7 @@ function entradasDeDinero(): EntradaCatalogo[] {
         grupo: 'dinero',
         clave: 'Ventas_ARCO',
         definicion:
-          'Contratos ARCO firmados en el mes. ARCO no pasa por el embudo de FLECHA: entra por otra vía y por eso no es una etapa.',
+          'Contratos ARCO firmados en el mes: cuántos, no cuánto. Su importe va aparte, en «Ventas ARCO». ARCO no pasa por el embudo de FLECHA: entra por otra vía y por eso no es una etapa.',
       },
     },
   ]
