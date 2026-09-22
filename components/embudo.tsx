@@ -82,6 +82,8 @@ export interface EmbudoProps {
   periodoId: string
   /** Las tasas del plan, para la ficha abierta. */
   tasas: TasaDelPlan[]
+  /** Cambiar de mes desde la ficha abierta, sin tener que cerrarla. */
+  onCambiarPeriodo?: (id: string) => void
 }
 
 function esEtapa(c: Comparativa): c is Comparativa & { indicador: Indicador & { etapa: number } } {
@@ -135,7 +137,7 @@ function fichasDe(ventana: PuntoDeSerie[], etapas: Indicador[]): Ficha[] {
   return lista
 }
 
-export function Embudo({ serie, periodoId, tasas }: EmbudoProps) {
+export function Embudo({ serie, periodoId, tasas, onCambiarPeriodo }: EmbudoProps) {
   const [abierta, setAbierta] = useState<number | null>(null)
 
   const { ventana, elegido } = useMemo(
@@ -198,6 +200,10 @@ export function Embudo({ serie, periodoId, tasas }: EmbudoProps) {
         elegido={grande.elegido}
         etapas={etapas}
         tasas={tasas}
+        // Todos los periodos de la serie, no los doce de la ventana: desde la
+        // ficha abierta se llega a cualquier mes del plan.
+        periodos={serie.map((p) => p.periodo)}
+        onCambiarPeriodo={onCambiarPeriodo}
         onCambiar={setAbierta}
         onCerrar={() => setAbierta(null)}
       />

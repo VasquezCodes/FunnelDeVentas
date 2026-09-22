@@ -370,7 +370,14 @@ export function Tablero({
       icono: FunnelIcon,
       titulo: 'Comparativa mes a mes',
       avisa: embudoAvisa,
-      contenido: <Embudo serie={serieDelTipo} periodoId={periodo.id} tasas={tasas} />,
+      contenido: (
+        <Embudo
+          serie={serieDelTipo}
+          periodoId={periodo.id}
+          tasas={tasas}
+          onCambiarPeriodo={cambiarPeriodo}
+        />
+      ),
     },
     {
       id: 'canales',

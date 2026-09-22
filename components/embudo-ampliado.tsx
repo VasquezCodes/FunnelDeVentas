@@ -28,7 +28,9 @@ import { LeyendaPlanReal } from '@/components/graficos/leyenda-plan-real'
 import { Semaforo } from '@/components/semaforo'
 import { calcularEstado, formatearTasaConversion, formatearValor } from '@/lib/comparacion'
 import { tasaEntre, tasaReal } from '@/lib/tasas'
-import type { Comparativa, Estado, Indicador, TasaDelPlan } from '@/lib/tipos'
+import { gsap, prefiereQuietud, useGSAP } from '@/lib/animacion'
+import { etiquetaConCobertura } from '@/lib/periodos'
+import type { Comparativa, Estado, Indicador, Periodo, TasaDelPlan } from '@/lib/tipos'
 import { CANALES_ACTIVOS, NOMBRE_CANAL, type Canal } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +49,14 @@ export interface EmbudoAmpliadoProps {
   tasas: TasaDelPlan[]
   onCambiar: (indice: number) => void
   onCerrar: () => void
+  /**
+   * Todos los periodos del plan, en orden, y cómo cambiar de uno a otro. La
+   * ficha abierta enseña doce meses y no se podía mover entre ellos: para ver
+   * otro mes había que cerrarla, cambiar arriba y volver a abrirla. Sin esto,
+   * el cuadro se queda como estaba y el mes es solo un rótulo.
+   */
+  periodos?: Periodo[]
+  onCambiarPeriodo?: (id: string) => void
 }
 
 export function EmbudoAmpliado({
@@ -58,6 +68,8 @@ export function EmbudoAmpliado({
   tasas,
   onCambiar,
   onCerrar,
+  periodos: periodosDelPlan,
+  onCambiarPeriodo,
 }: EmbudoAmpliadoProps) {
   const dialogo = useRef<HTMLDialogElement>(null)
 
@@ -72,6 +84,58 @@ export function EmbudoAmpliado({
   const punto = ventana[elegido]
   const periodos = ventana.map((p) => p.periodo)
   const etapa = ficha ? etapas.find((e) => e.id === ficha.id) : undefined
+
+  /**
+   * El viaje de un mes a otro.
+   *
+   * El gráfico ya se rehace solo: su `clave` lleva los meses de la ventana, y
+   * al cambiar de mes vuelve a trazarse el plan, a dibujarse la curva y a
+   * contar la cifra. Lo que faltaba era que el resto fuera con él —el rótulo
+   * y las tablas del pie cambiaban de golpe, como si fuera otra pantalla— y
+   * que se notara HACIA DÓNDE se va.
+   *
+   * Por eso todo entra del lado del que se viene: el rótulo, el cuerpo entero
+   * y, detrás, las filas del pie escalonadas. Es el gesto de pasar una
+   * página, y el sentido lo da el signo. Solo al CAMBIAR de mes: al abrir la
+   * ficha ya hay una entrada, y dos animaciones a la vez son ruido.
+   */
+  const mesAnterior = useRef<string | null>(null)
+  useGSAP(
+    () => {
+      const mes = punto?.periodo.id
+      const antes = mesAnterior.current
+      mesAnterior.current = mes ?? null
+      if (!mes || !antes || antes === mes || abierta === null || prefiereQuietud()) return
+
+      // Los ids son '2026-09' y se ordenan como texto: mayor es más tarde.
+      const lado = mes > antes ? 1 : -1
+      gsap
+        .timeline({ defaults: { ease: 'power3.out' } })
+        .fromTo(
+          '[data-mes-ficha]',
+          { xPercent: lado * 60, opacity: 0 },
+          { xPercent: 0, opacity: 1, duration: 0.34 },
+        )
+        // El cuerpo entero con él: es lo que convierte el cambio en un gesto y
+        // no en un parpadeo. Poco recorrido —36 px— y desvanecido a la vez,
+        // que es lo que hace que se note sin marear.
+        .fromTo('[data-cuerpo]', { x: lado * 36, opacity: 0 }, { x: 0, opacity: 1, duration: 0.52 }, '<')
+        // Las filas del pie llegan detrás: la tabla se rellena en vez de
+        // aparecer de golpe.
+        .fromTo(
+          '[data-pie] tbody tr',
+          { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.42, stagger: 0.03 },
+          '<0.14',
+        )
+        // El DOM se queda como estaba: sin esto, un `transform` en una fila de
+        // tabla se lleva por delante el hover y el foco.
+        .set(['[data-mes-ficha]', '[data-cuerpo]', '[data-pie] tbody tr'], {
+          clearProps: 'opacity,transform',
+        })
+    },
+    { scope: dialogo, dependencies: [punto?.periodo.id, abierta] },
+  )
 
   return (
     <dialog
@@ -92,7 +156,11 @@ export function EmbudoAmpliado({
         <div>
           <div className="flex items-center justify-between gap-3 border-b px-6 py-3" style={{ borderColor: 'var(--regla-fina)' }}>
             <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1.5">
-              <p className="text-sm text-muted-foreground">{punto.periodo.etiqueta}</p>
+              <PasoDeMes
+                actual={punto.periodo}
+                periodos={periodosDelPlan}
+                onCambiar={onCambiarPeriodo}
+              />
               {/* La rejilla de fichas lleva su leyenda en la cabecera de la
                   hoja, pero esta ficha se abre encima y la tapa: aquí dentro
                   el gráfico es más grande, tiene eje y rejilla, y era el único
@@ -124,6 +192,10 @@ export function EmbudoAmpliado({
             </div>
           </div>
 
+          {/* Lo que viaja al cambiar de mes: el gráfico y las tablas. La
+              cabecera se queda quieta, que es lo que da la sensación de que
+              es la misma ficha con otro mes y no otra pantalla. */}
+          <div data-cuerpo>
           <CeldaFicha
             key={ficha.id}
             ficha={ficha}
@@ -134,7 +206,7 @@ export function EmbudoAmpliado({
             grande
           />
 
-          <div className="grid grid-cols-1 gap-px border-t md:grid-cols-2" style={{ backgroundColor: 'var(--regla-fina)', borderColor: 'var(--regla-fina)' }}>
+          <div data-pie className="grid grid-cols-1 gap-px border-t md:grid-cols-2" style={{ backgroundColor: 'var(--regla-fina)', borderColor: 'var(--regla-fina)' }}>
             {etapa ? (
               <>
                 <PorCanal etapa={etapa} punto={punto} />
@@ -144,9 +216,75 @@ export function EmbudoAmpliado({
               <TasasDelEmbudo etapas={etapas} punto={punto} tasas={tasas} />
             )}
           </div>
+          </div>
         </div>
       )}
     </dialog>
+  )
+}
+
+/**
+ * El mes de la ficha abierta, y cómo cambiarlo sin cerrarla.
+ *
+ * Va donde antes solo se leía «Septiembre 2026», y por eso se pinta como una
+ * pieza —borde, flechas dentro— y no como texto con dos botones al lado: lo
+ * que se ve tiene que decir que se puede tocar.
+ *
+ * Las flechas de la derecha del cuadro pasan de una ETAPA a otra y estas de
+ * un MES a otro. Son dos pares a dos palmos, así que cada una dice a dónde
+ * lleva —«Ir a Agosto 2026», «Ficha anterior»—: sin eso, un lector de
+ * pantalla oiría cuatro flechas iguales.
+ *
+ * Sin `periodos` ni `onCambiar` se queda en lo que era: un rótulo.
+ */
+function PasoDeMes({
+  actual,
+  periodos,
+  onCambiar,
+}: {
+  actual: Periodo
+  periodos?: Periodo[]
+  onCambiar?: (id: string) => void
+}) {
+  const etiqueta = etiquetaConCobertura(actual)
+  if (!periodos || !onCambiar) {
+    return <p className="text-sm text-muted-foreground">{etiqueta}</p>
+  }
+
+  // `periodos` viene en orden cronológico: atrás es el anterior del array.
+  const indice = periodos.findIndex((p) => p.id === actual.id)
+  const atras = indice > 0 ? periodos[indice - 1] : null
+  const adelante = indice >= 0 && indice < periodos.length - 1 ? periodos[indice + 1] : null
+
+  return (
+    <div className="flex items-center gap-0.5 rounded-full border p-0.75" style={{ borderColor: 'var(--border)' }}>
+      <BotonIcono
+        etiqueta={atras ? `Ir a ${atras.etiqueta}` : 'No hay mes anterior'}
+        disabled={!atras}
+        onClick={() => atras && onCambiar(atras.id)}
+      >
+        <CaretLeftIcon weight="bold" className="size-4" />
+      </BotonIcono>
+      {/* `inline-block` no es decorativo: a un elemento en línea no se le
+          aplica ni `min-width` ni `transform`, así que sin esto ni el ancho se
+          mantiene ni la transición del mes se ve.
+
+          Y el ancho estable hace falta porque, si no, la pieza encoge al pasar
+          de «Septiembre» a «Mayo» y las flechas se mueven bajo el dedo. */}
+      <span
+        data-mes-ficha
+        className="inline-block min-w-40 text-center text-sm font-medium text-foreground"
+      >
+        {etiqueta}
+      </span>
+      <BotonIcono
+        etiqueta={adelante ? `Ir a ${adelante.etiqueta}` : 'No hay mes siguiente'}
+        disabled={!adelante}
+        onClick={() => adelante && onCambiar(adelante.id)}
+      >
+        <CaretRightIcon weight="bold" className="size-4" />
+      </BotonIcono>
+    </div>
   )
 }
 
