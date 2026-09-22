@@ -86,7 +86,7 @@ import {
 import { toast } from 'sonner'
 
 import type { Canal, Indicador, Meta, Periodo, Real, TasaDelPlan, Unidad } from '@/lib/tipos'
-import { NOMBRE_CANAL } from '@/lib/tipos'
+import { NOMBRE_CANAL, colorDeCanal } from '@/lib/tipos'
 import { formatearTasaConversion, formatearValor } from '@/lib/comparacion'
 import { tasaEntre, tasaReal } from '@/lib/tasas'
 import { resumirMes } from '@/lib/reales/mes'
@@ -183,13 +183,13 @@ const APARIENCIA: Record<string, { Icono: LucideIcon; color: string }> = {
   insumos: { Icono: Layers, color: 'var(--muted-foreground)' },
   // Por canal: el icono y el tono de cada canal en el tablero (Canales); los
   // que el plan deja sin cifras, en gris.
-  'canal-publicidad': { Icono: Megaphone, color: 'var(--canal-1)' },
-  'canal-prospeccion': { Icono: Radar, color: 'var(--canal-2)' },
-  'canal-referidos': { Icono: Handshake, color: 'var(--canal-3)' },
-  'canal-afiliados': { Icono: Link2, color: 'var(--muted-foreground)' },
-  'canal-contenido': { Icono: FileText, color: 'var(--muted-foreground)' },
-  'canal-newsletter': { Icono: Mail, color: 'var(--muted-foreground)' },
-  'canal-interno': { Icono: Building2, color: 'var(--muted-foreground)' },
+  'canal-publicidad': { Icono: Megaphone, color: colorDeCanal('publicidad') },
+  'canal-prospeccion': { Icono: Radar, color: colorDeCanal('prospeccion') },
+  'canal-referidos': { Icono: Handshake, color: colorDeCanal('referidos') },
+  'canal-afiliados': { Icono: Link2, color: colorDeCanal('afiliados') },
+  'canal-contenido': { Icono: FileText, color: colorDeCanal('contenido') },
+  'canal-newsletter': { Icono: Mail, color: colorDeCanal('newsletter') },
+  'canal-interno': { Icono: Building2, color: colorDeCanal('interno') },
   totales: { Icono: Sigma, color: COLOR_FAMILIA.embudo },
 }
 const APARIENCIA_NEUTRA = { Icono: Layers, color: 'var(--muted-foreground)' }

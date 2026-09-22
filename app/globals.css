@@ -60,6 +60,10 @@
   --color-canal-1: var(--canal-1);
   --color-canal-2: var(--canal-2);
   --color-canal-3: var(--canal-3);
+  --color-canal-4: var(--canal-4);
+  --color-canal-5: var(--canal-5);
+  --color-canal-6: var(--canal-6);
+  --color-canal-7: var(--canal-7);
   --color-metrica-carmin: var(--metrica-carmin);
   --color-metrica-verde: var(--metrica-verde);
   --color-metrica-azul: var(--metrica-azul);
@@ -154,39 +158,53 @@
   --chart-5: #b9afa8;
 
   /* ── Canales de captación ────────────────────────────────────────
-     Rampa de un solo tono, anclada en el vino de marca (#54123D) y
-     desplazada hacia el violeta. El desplazamiento no es estético: el
-     vino puro se confunde con el rojo crítico (#A0073A) —11,5 de
-     separación medida, por debajo del suelo de 15— y una barra de canal
-     no puede leerse como una alarma. Así medido queda en 15,9.
+     ── De tres tonos de vino a siete colores ─────────────────────────
+     Esto ERA una rampa ordinal de un solo tono: valía mientras el gráfico
+     dibujaba tres canales. Al entrar los siete del plan dejó de valer, y
+     no por gusto: medida con el validador de la guía de visualización,
+     una rampa de siete pasos del mismo tono deja canales vecinos a 5,5 de
+     separación cuando el suelo es 15. Es decir, invisibles el uno del
+     otro. Un séptimo tono de morado no es un color: es el mismo color.
 
-     Es una rampa ordinal, no siete colores categóricos: los canales
-     están siempre en el mismo orden de volumen (77 / 20 / 3), y de los
-     siete que define el plan solo tres llevan cifra. Tres tonos de un
-     mismo tono se ordenan solos; siete hues inventados serían un
-     arcoíris que además chocaría con el semáforo.
+     Ahora son siete colores categóricos, que es lo que los canales son
+     —identidades, no un orden—, elegidos con tres reglas:
 
-     El carmín sigue fuera: es cromo de marca y acción, nunca un dato.
+       · Ningún tono de estado. Fuera el verde de «En plan», el ámbar de
+         «Al límite» y el rojo de «Fuera de plan»: en este tablero esos
+         tres significan juicio, y un canal no se juzga por ser quien es.
+         El carmín de marca sigue fuera por lo mismo de siempre.
+       · Claros y oscuros alternados. Dos tramos vecinos se distinguen
+         por claridad aunque el daltonismo les quite el tono; por eso el
+         peor par vecino queda en 24,5 (normal) y 24,5 (deuteranopía),
+         muy por encima de los suelos de 15 y 8.
+       · Publicidad conserva el morado. Es el canal de más volumen y el
+         que el tablero ya llevaba; cambiar el resto no tenía por qué
+         cambiarlo a él.
 
-     BANDA MEDIA, no todo el rango. La primera versión iba de 14,3:1 a
-     2,6:1, es decir de casi tinta a casi papel: el canal grande competía
-     con la serie real (16,9:1) y el pequeño se perdía en el fondo. Sobre
-     un fondo claro los dos extremos ya están ocupados. Ahora la rampa vive
-     entre 8,3:1 y 3,1:1 — se lee como una familia propia, distinta de la
-     tinta y del papel, y hasta el canal más pequeño pasa el 3:1 que pide
-     una marca de dato. */
-  --canal-1: #6d3783;
-  --canal-2: #9153ab;
-  --canal-3: #ad7cc2;
+     Tres de los siete quedan por debajo de 3:1 contra el papel (los
+     claros: #12b4b4, #14b9e8, #d98dfa). La guía lo permite cuando el
+     dato va rotulado y existe una tabla equivalente, y aquí se cumplen
+     las dos: cada tramo lleva su nombre e importe dentro y la hoja lleva
+     su tabla para lectores de pantalla. */
+  --canal-1: #733aa7; /* Publicidad  · 7,26:1 */
+  --canal-2: #12b4b4; /* Prospección · 2,56:1 */
+  --canal-3: #862481; /* Referidos   · 8,13:1 */
+  --canal-4: #14b9e8; /* Afiliados   · 2,30:1 */
+  --canal-5: #274db5; /* Contenido   · 7,46:1 */
+  --canal-6: #d98dfa; /* Newsletter  · 2,30:1 */
+  --canal-7: #05599a; /* Interno     · 7,24:1 */
 
   /* Lo que va DENTRO de un tramo de canal (icono, nombre e importe del
      aluvial de Canales): el color que contrasta con su relleno. Blanco
-     sobre los dos vinos oscuros (8,3:1 y 5,2:1); tinta sobre el lila
-     (#ad7cc2), porque el blanco daba 3,3:1, que vale para un icono pero no
-     para un texto. */
+     sobre los cuatro oscuros, tinta sobre los tres claros; el peor de los
+     siete da 6,60:1, de sobra para un texto pequeño. */
   --canal-1-sobre: #ffffff;
-  --canal-2-sobre: #ffffff;
-  --canal-3-sobre: #1d1d1b;
+  --canal-2-sobre: #1d1d1b;
+  --canal-3-sobre: #ffffff;
+  --canal-4-sobre: #1d1d1b;
+  --canal-5-sobre: #ffffff;
+  --canal-6-sobre: #1d1d1b;
+  --canal-7-sobre: #ffffff;
 
   /* ── El dinero: una rampa ordinal de un solo verde ──────────────────
      Del dinero más seguro (la mensualidad de FLECHA, el tono más marcado)
@@ -292,20 +310,29 @@
   --chart-4: #635b57;
   --chart-5: #423b38;
 
-  /* La rampa de canal se re-ancla, no se invierte: sobre fondo oscuro el
-     paso más oscuro del modo claro cae a 1,23:1 y desaparece. Estos tres
-     pasos se eligieron contra #1c1817 y vuelven a pasar los cuatro
-     controles de rampa (monotonía, salto, contraste del extremo, un solo
-     tono). El canal de más volumen sigue siendo el más contrastado. */
-  --canal-1: #d9bce6;
-  --canal-2: #a874c4;
-  --canal-3: #7a4a94;
+  /* Los canales se eligen otra vez contra #1c1817, no se invierten: sobre
+     fondo oscuro la banda de claridad que admite el validador es estrecha
+     (L 0,48–0,67 frente a 0,43–0,77 en claro), así que aquí la separación
+     la tiene que dar el TONO y no la claridad. Mismos siete tonos que en
+     claro, con la claridad reelegida: peor par vecino a 18,0 (normal) y
+     10,2 (protanopía), por encima de los suelos de 15 y 8. */
+  --canal-1: #9961d1; /* Publicidad  · 4,18:1 */
+  --canal-2: #0e9c9d; /* Prospección · 5,25:1 */
+  --canal-3: #993894; /* Referidos   · 2,81:1 */
+  --canal-4: #0e98bf; /* Afiliados   · 5,25:1 */
+  --canal-5: #2f57bf; /* Contenido   · 2,71:1 */
+  --canal-6: #b76cd7; /* Newsletter  · 5,15:1 */
+  --canal-7: #0664ac; /* Interno     · 2,87:1 */
 
-  /* En oscuro los dos primeros tonos son claros: encima va el color de la
-     tarjeta (4,9:1 sobre #a874c4); sobre el tercero, blanco (6,5:1). */
-  --canal-1-sobre: #1c1817;
-  --canal-2-sobre: #1c1817;
+  /* Igual que en claro: tinta sobre los claros, blanco sobre los oscuros.
+     El peor de los siete da 4,21:1. */
+  --canal-1-sobre: #ffffff;
+  --canal-2-sobre: #1d1d1b;
   --canal-3-sobre: #ffffff;
+  --canal-4-sobre: #1d1d1b;
+  --canal-5-sobre: #ffffff;
+  --canal-6-sobre: #1d1d1b;
+  --canal-7-sobre: #ffffff;
 
   /* La rampa del dinero se re-ancla, no se invierte a ciegas: sobre fondo
      oscuro lo marcado es lo CLARO, así que la mensualidad de FLECHA sigue

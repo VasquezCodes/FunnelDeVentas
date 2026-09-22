@@ -11,7 +11,7 @@
  */
 
 import type { Canal, Comparativa, Estado } from '@/lib/tipos'
-import { CANALES_ACTIVOS, NOMBRE_CANAL } from '@/lib/tipos'
+import { CANALES, NOMBRE_CANAL, colorDeCanal } from '@/lib/tipos'
 import { calcularEstado } from '@/lib/comparacion'
 
 export interface FilaCanal {
@@ -49,10 +49,11 @@ function dividir(a: number | null, b: number | null): number | null {
 export function filasDeCanal(
   comparativas: readonly Comparativa[],
   etapaId = 'eleads',
+  canales: readonly Canal[] = CANALES,
 ): FilaCanal[] {
   const porId = new Map(comparativas.map((c) => [c.indicador.id, c]))
 
-  const filas: FilaCanal[] = CANALES_ACTIVOS.map((canal, i) => {
+  const filas: FilaCanal[] = canales.map((canal) => {
     const leads = porId.get(`${etapaId}.${canal}`)
     const gasto = porId.get(`captacion.${canal}`)
 
@@ -67,10 +68,7 @@ export function filasDeCanal(
     return {
       canal,
       nombre: NOMBRE_CANAL[canal],
-      // La rampa tiene tres pasos y los canales activos son tres, en el mismo
-      // orden de volumen. Si algún día se activa un cuarto, aquí hay que
-      // decidir: ampliar la rampa o plegar la cola en «otros».
-      color: `var(--canal-${Math.min(i + 1, 3)})`,
+      color: colorDeCanal(canal),
       leadsPlan,
       leadsReal,
       gastoPlan,
@@ -92,6 +90,39 @@ export function filasDeCanal(
   }
 
   return filas
+}
+
+/**
+ * Qué canales dibuja el gráfico: los que tienen leads.
+ *
+ * Se pregunta a los DATOS y no a una lista escrita a mano. El plan define
+ * siete canales y durante mucho tiempo solo tres llevaban cifra, así que el
+ * gráfico traía esos tres escritos en el código. Eso enseñaba 133 de los 148
+ * leads del mes y no decía que faltaban quince: el resto entraba por
+ * contenido, por la newsletter y por dentro de casa, y sencillamente no se
+ * veía. Un gráfico que se deja canales fuera sin avisar miente por omisión.
+ *
+ * «Tener leads» se mira en TODA la serie, no en el periodo elegido: si se
+ * mirara mes a mes, la lista de canales —y con ella el conmutador de
+ * arriba— cambiaría al pasar de un mes a otro. Cuenta el plan además del
+ * real, para que un canal previsto que no trajo nada salga a cero en vez de
+ * desaparecer, que es justo la noticia.
+ *
+ * Los canales van siempre en el orden de `CANALES`, y cada uno conserva su
+ * color entre periodos.
+ */
+export function canalesConLeads(
+  serie: ReadonlyArray<{ comparativas: readonly Comparativa[] }>,
+  etapaId = 'eleads',
+): Canal[] {
+  return CANALES.filter((canal) =>
+    serie.some((punto) =>
+      punto.comparativas.some(
+        (c) =>
+          c.indicador.id === `${etapaId}.${canal}` && ((c.meta ?? 0) > 0 || (c.real ?? 0) > 0),
+      ),
+    ),
+  )
 }
 
 /**

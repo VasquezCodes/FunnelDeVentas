@@ -64,8 +64,38 @@ export type Canal =
   | 'newsletter'
   | 'interno'
 
-/** Canales con cifras en el plan vigente, en orden de volumen. */
+/**
+ * Los siete canales, en el orden del Excel — que es también el de volumen.
+ *
+ * Es el orden canónico: fija en qué orden se dibujan y, sobre todo, qué
+ * color le toca a cada uno. El color sigue al canal y nunca a su posición en
+ * una lista filtrada; si dependiera de la posición, dejar de pintar un canal
+ * vacío repintaría a todos los demás y el mismo tono significaría hoy
+ * «Referidos» y mañana «Contenido».
+ */
+export const CANALES: Canal[] = [
+  'publicidad',
+  'prospeccion',
+  'referidos',
+  'afiliados',
+  'contenido',
+  'newsletter',
+  'interno',
+]
+
+/**
+ * Canales con cifras en el plan vigente, en orden de volumen.
+ *
+ * Es una lista escrita a mano, y por eso ya no la usa el gráfico de Canales:
+ * allí los canales salen de quién tiene leads en el periodo (`canalesConLeads`),
+ * que es la pregunta de verdad. Queda para lo que todavía la necesita.
+ */
 export const CANALES_ACTIVOS: Canal[] = ['publicidad', 'prospeccion', 'referidos']
+
+/** El tono de un canal en la rampa de siete. Por canal, no por posición. */
+export function colorDeCanal(canal: Canal): string {
+  return `var(--canal-${CANALES.indexOf(canal) + 1})`
+}
 
 export const NOMBRE_CANAL: Record<Canal, string> = {
   publicidad: 'Publicidad',

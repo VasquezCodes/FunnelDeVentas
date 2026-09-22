@@ -35,11 +35,17 @@
  * Los totales son los de estos canales, no los de la cabecera del mes: el
  * plan tiene gasto y leads sin canal asignado.
  *
+ * ── Qué canales se dibujan ──────────────────────────────────────────────
+ * Los que tienen leads, preguntándoselo a los datos (`canalesConLeads`) y no
+ * a una lista escrita a mano. El plan define siete; cuántos salgan depende
+ * del libro y del mes.
+ *
  * ── Color e iconos ──────────────────────────────────────────────────────
- * Cada canal lleva su tono de la rampa de vino (`--canal-N`) en el tramo,
- * la cinta y la celda, y su icono de Lucide. El texto y el icono dentro del
- * tramo van en el color que contrasta con el relleno (`--canal-N-sobre`).
- * El juicio solo lo emiten las etiquetas de estado, con icono y palabra.
+ * Cada canal lleva su color (`--canal-N`, por canal y nunca por su posición
+ * en la lista) en el tramo, la cinta y la celda, y su icono de Lucide. El
+ * texto y el icono dentro del tramo van en el color que contrasta con el
+ * relleno (`--canal-N-sobre`). El juicio solo lo emiten las etiquetas de
+ * estado, con icono y palabra.
  *
  * ── Movimiento ──────────────────────────────────────────────────────────
  * GSAP (`construirEntrada`): las cotas del plan se trazan, el gasto se
@@ -49,10 +55,14 @@
 
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
+  Building2,
   Handshake,
+  Mail,
   Megaphone,
   MoveRight,
+  FileText,
   Radar,
+  Link2,
   Users,
   Wallet,
   type LucideIcon,
@@ -75,7 +85,7 @@ import {
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
 import { gsap } from '@/lib/animacion'
-import { filasDeCanal, type FilaCanal } from '@/lib/canales'
+import { canalesConLeads, filasDeCanal, type FilaCanal } from '@/lib/canales'
 import {
   ETIQUETAS_ESTADO,
   SIN_DATO,
@@ -85,7 +95,7 @@ import {
 } from '@/lib/comparacion'
 import { compararPeriodos, etiquetaConCobertura } from '@/lib/periodos'
 import type { Canal, TasaDelPlan } from '@/lib/tipos'
-import { CANALES_ACTIVOS, NOMBRE_CANAL } from '@/lib/tipos'
+import { NOMBRE_CANAL, colorDeCanal } from '@/lib/tipos'
 import { cn } from '@/lib/utils'
 import { DetalleCanal } from '@/components/canal-individual'
 
@@ -93,12 +103,23 @@ import { DetalleCanal } from '@/components/canal-individual'
 
 /**
  * Un icono por canal, elegido por cómo llega el lead: la publicidad se
- * anuncia, la prospección rastrea, el referido llega de un apretón de manos.
+ * anuncia, la prospección rastrea, el referido llega de un apretón de manos,
+ * el afiliado por una red que reparte, el contenido por algo que se publica,
+ * la newsletter por correo y el interno desde dentro de la casa.
+ *
+ * Están los siete y no solo los que hoy llevan cifra: el icono es la segunda
+ * señal de identidad del canal —la primera es el color— y en un tramo
+ * estrecho es la ÚNICA que cabe. Un canal sin icono sería una mancha de
+ * color sin nombre.
  */
-const ICONO_CANAL: Partial<Record<Canal, LucideIcon>> = {
+const ICONO_CANAL: Record<Canal, LucideIcon> = {
   publicidad: Megaphone,
   prospeccion: Radar,
   referidos: Handshake,
+  afiliados: Link2,
+  contenido: FileText,
+  newsletter: Mail,
+  interno: Building2,
 }
 
 // ── Geometría ───────────────────────────────────────────────────────────
@@ -125,6 +146,12 @@ const AIRE_ICONO = 7
 const AIRE_IMPORTE = 10
 /** Sitio a la derecha para el halo de la caída del plan cuando cae en el borde. */
 const RESERVA_DERECHA = 6
+/**
+ * Lo menos que puede medir el tramo de un canal con dato. Es el ancho al que
+ * una banda de color se sigue leyendo como una banda y no como una raya; por
+ * debajo de esto el canal desaparece. Ver `repartir`.
+ */
+const ANCHO_MINIMO_TRAMO = 9
 /** Ancho que se supone hasta medir (también el que pinta el servidor). */
 const ANCHO_SUPUESTO = 1000
 const ANCHO_ESTRECHO = 560
@@ -179,12 +206,41 @@ interface Tramo {
 /**
  * Reparte `largo` px entre los valores, en orden, y deja el hueco del color
  * de la tarjeta entre un tramo y el siguiente que tenga ancho.
+ *
+ * ── Por qué hay un ancho mínimo ──────────────────────────────────────────
+ * Con tres canales el reparto puro bastaba. Con los siete del plan no: en
+ * un mes normal la newsletter trae 2 leads de 148, que a 375 px de pantalla
+ * son DOS píxeles. Un canal de dos píxeles no está dibujado, está escondido,
+ * y el gráfico acaba enseñando cuatro colores y afirmando que son seis.
+ *
+ * Así que todo canal con dato se lleva al menos `minimo` px, y ese mínimo
+ * sale de los tramos que van sobrados, a prorrata. Es una distorsión y
+ * conviene decirlo: el tramo más pequeño se dibuja más ancho de lo que le
+ * toca. Se acepta porque la cifra exacta está al lado —en la celda del canal
+ * y en la tabla de la hoja— y porque la alternativa es peor: un dato que no
+ * se ve se lee como un dato que no existe. El mínimo nunca pasa de lo que
+ * cabe, así que un mes con muchos canales diminutos no rompe la barra.
  */
-function repartir(valores: number[], largo: number): Tramo[] {
+function repartir(valores: number[], largo: number, minimo = 0): Tramo[] {
   const total = valores.reduce((suma, v) => suma + v, 0)
+  const anchos = valores.map((v) => (total > 0 ? (v / total) * largo : 0))
+
+  const conDato = valores.map((v, i) => (v > 0 ? i : -1)).filter((i) => i >= 0)
+  if (minimo > 0 && conDato.length > 0) {
+    // Nunca más de lo que cabe: con muchos canales el mínimo se encoge solo.
+    const piso = Math.min(minimo, largo / conDato.length)
+    const falta = conDato.reduce((suma, i) => suma + Math.max(0, piso - anchos[i]), 0)
+    const sobra = conDato.reduce((suma, i) => suma + Math.max(0, anchos[i] - piso), 0)
+    if (falta > 0 && sobra > 0) {
+      const parte = Math.min(1, falta / sobra)
+      for (const i of conDato) {
+        anchos[i] = anchos[i] > piso ? anchos[i] - (anchos[i] - piso) * parte : piso
+      }
+    }
+  }
+
   let x = 0
-  const tramos = valores.map((v) => {
-    const ancho = total > 0 ? (v / total) * largo : 0
+  const tramos = anchos.map((ancho) => {
     const tramo = { x0: x, x1: x + ancho }
     x += ancho
     return tramo
@@ -244,29 +300,51 @@ function periodoActual(serie: PuntoDeSerie[], periodoId: string): PuntoDeSerie |
 type VistaCanales = 'general' | Canal
 
 /**
+ * ¿Se ofrece la vista General?
+ *
+ * Apagada a petición del equipo: con los canales del plan, el aluvial de
+ * todos juntos tiene dos tramos grandes y cuatro astillas, y no se leía.
+ * Cada canal por separado sí, porque ahí la barra es suya entera.
+ *
+ * Se deja apagada y NO borrada. El diagrama es el mismo componente que
+ * dibuja la vista de un canal (`CanalesGeneral` con `soloCanal`), así que
+ * mantenerlo no cuesta código muerto: es la misma pieza con un canal o con
+ * todos. Volver a ofrecerla es poner esto en `true`.
+ */
+const VER_GENERAL = false
+
+/**
  * Canales: General compara el gasto y los leads de todos los canales; cada
  * canal, por separado, enseña su gasto, sus leads y su cadena de conversión.
  * Un solo conmutador, encima de la hoja, para cambiar de una a otra.
  */
 export function Canales({ serie, periodoId, tasas }: CanalesProps) {
-  const [vista, setVista] = useState<VistaCanales>('general')
   const actual = useMemo(() => periodoActual(serie, periodoId), [serie, periodoId])
+  // Los canales del conmutador salen de la serie entera: cambiar de mes no
+  // debe cambiar las pestañas bajo el dedo de quien está mirando.
+  const canales = useMemo(() => canalesConLeads(serie), [serie])
+
+  // Sin vista General se abre en el primer canal, que es el de más volumen.
+  const [vista, setVista] = useState<VistaCanales>(VER_GENERAL ? 'general' : 'publicidad')
+  // El canal elegido puede no estar entre los que tienen leads —al cambiar de
+  // libro, o el primer render antes de conocer la serie—: se cae al primero.
+  const elegido: VistaCanales =
+    vista === 'general' || canales.includes(vista) ? vista : (canales[0] ?? 'general')
 
   return (
     <div className="flex flex-col gap-3">
-      <ConmutadorCanales vista={vista} onCambiar={setVista} />
-      {vista === 'general' || !actual ? (
+      <ConmutadorCanales vista={elegido} canales={canales} onCambiar={setVista} />
+      {elegido === 'general' || !actual ? (
         <CanalesGeneral serie={serie} periodoId={periodoId} />
       ) : (
         // El mismo diagrama de General, solo con este canal, y debajo lo
         // suyo: sus precios y su cadena. La `key` repite la entrada al
         // cambiar de canal.
-        <CanalesGeneral key={vista} serie={serie} periodoId={periodoId} soloCanal={vista}>
+        <CanalesGeneral key={elegido} serie={serie} periodoId={periodoId} soloCanal={elegido}>
           <DetalleCanal
-            canal={vista}
-            nombre={NOMBRE_CANAL[vista]}
-            // El mismo tono que el canal lleva en la vista General.
-            color={`var(--canal-${Math.min(CANALES_ACTIVOS.indexOf(vista) + 1, 3)})`}
+            canal={elegido}
+            nombre={NOMBRE_CANAL[elegido]}
+            color={colorDeCanal(elegido)}
             actual={actual}
             tasas={tasas}
           />
@@ -282,14 +360,16 @@ export function Canales({ serie, periodoId, tasas }: CanalesProps) {
  */
 function ConmutadorCanales({
   vista,
+  canales,
   onCambiar,
 }: {
   vista: VistaCanales
+  canales: readonly Canal[]
   onCambiar: (vista: VistaCanales) => void
 }) {
   const opciones: Array<{ id: VistaCanales; etiqueta: string; Icono?: LucideIcon }> = [
-    { id: 'general', etiqueta: 'General' },
-    ...CANALES_ACTIVOS.map((canal) => ({
+    ...(VER_GENERAL ? [{ id: 'general' as VistaCanales, etiqueta: 'General' }] : []),
+    ...canales.map((canal) => ({
       id: canal,
       etiqueta: NOMBRE_CANAL[canal],
       Icono: ICONO_CANAL[canal],
@@ -349,11 +429,13 @@ function CanalesGeneral({
   const [resaltado, setResaltado] = useState<Canal | null>(null)
 
   const actual = useMemo(() => periodoActual(serie, periodoId), [serie, periodoId])
-  // Filtrar después de construir: cada canal conserva su tono de la rampa.
+  // El color de cada fila ya no depende de su posición en la lista
+  // (`colorDeCanal`), así que filtrar aquí no repinta a los demás.
   const filas = useMemo(() => {
-    const todas = actual ? filasDeCanal(actual.comparativas) : []
-    return soloCanal ? todas.filter((f) => f.canal === soloCanal) : todas
-  }, [actual, soloCanal])
+    const conLeads = canalesConLeads(serie)
+    const cuales = soloCanal ? conLeads.filter((c) => c === soloCanal) : conLeads
+    return actual ? filasDeCanal(actual.comparativas, 'eleads', cuales) : []
+  }, [actual, serie, soloCanal])
 
   const gastoReal = sumar(filas.map((f) => f.gastoReal))
   const gastoPlan = sumar(filas.map((f) => f.gastoPlan))
@@ -385,8 +467,16 @@ function CanalesGeneral({
   const altoSvg = yLeads + ALTO_BARRA + MARGEN_V
   const largoGasto = razonGasto * unidad
   const largoLeads = razonLeads * unidad
-  const tramosGasto = repartir(filas.map((f) => Math.max(0, f.gastoReal ?? 0)), largoGasto)
-  const tramosLeads = repartir(filas.map((f) => Math.max(0, f.leadsReal ?? 0)), largoLeads)
+  const tramosGasto = repartir(
+    filas.map((f) => Math.max(0, f.gastoReal ?? 0)),
+    largoGasto,
+    ANCHO_MINIMO_TRAMO,
+  )
+  const tramosLeads = repartir(
+    filas.map((f) => Math.max(0, f.leadsReal ?? 0)),
+    largoLeads,
+    ANCHO_MINIMO_TRAMO,
+  )
   // Sin gasto o sin leads no hay de dónde a dónde: no se dibujan cintas.
   const hayCintas = largoGasto > 0 && largoLeads > 0
   const tamanoTramo = TAMANO_TRAMO * escalaTexto
@@ -454,7 +544,10 @@ function CanalesGeneral({
               <LeyendaCanales colores={filas.map((f) => f.color)} />
             </div>
           ) : (
-            <LeyendaCanales colores={filas.map((f) => f.color)} />
+            <div className="flex flex-col gap-2">
+              <LeyendaCanales colores={filas.map((f) => f.color)} />
+              <LeyendaDeCanales filas={filas} />
+            </div>
           )
         }
         mes={actual ? etiquetaConCobertura(actual.periodo) : undefined}
@@ -811,7 +904,13 @@ function TramoBarra({
   const inicioTexto = SANGRIA + LADO_ICONO + AIRE_ICONO
   const cabeTodo = importe !== '' && ancho >= inicioTexto + anchoNombre + AIRE_IMPORTE + anchoImporte + SANGRIA
   const cabeImporte = importe !== '' && ancho >= inicioTexto + anchoImporte + SANGRIA
-  const cabeIcono = ancho >= LADO_ICONO + SANGRIA * 2
+  // El icono pide su sangría a los dos lados mientras la tenga; si el tramo
+  // es estrecho se queda sin ella y va centrado, que es la última forma en
+  // que un canal pequeño puede decir quién es. Antes se exigía la sangría
+  // siempre, así que de seis canales solo se identificaban los dos grandes.
+  const cabeIconoConSangria = ancho >= LADO_ICONO + SANGRIA * 2
+  const cabeIcono = cabeIconoConSangria || ancho >= LADO_ICONO + 2
+  const xIcono = cabeIconoConSangria ? tramo.x0 + SANGRIA : tramo.x0 + (ancho - LADO_ICONO) / 2
   const centro = y + ALTO_BARRA / 2
   return (
     <g
@@ -824,7 +923,7 @@ function TramoBarra({
       <rect x={tramo.x0} y={y} width={ancho} height={ALTO_BARRA} style={{ fill: fila.color }} />
       {Icono && cabeIcono && (
         <Icono
-          x={tramo.x0 + SANGRIA}
+          x={xIcono}
           y={centro - LADO_ICONO / 2}
           size={LADO_ICONO}
           strokeWidth={1.75}
@@ -953,11 +1052,32 @@ function CeldaCanal({
   const lectura = lecturaDe(coste, 'frente', punto)
   const gasto = formatearCumplimiento(cuota.gasto)
   const leadsTexto = formatearCumplimiento(cuota.leads)
+
+  /**
+   * Un canal que trae leads y no cuesta dinero: el interno, que trabaja la
+   * casa, o uno cuyo gasto el plan no imputa. No tiene coste por lead, y eso
+   * no es una laguna en los datos.
+   *
+   * La celda decía «Sin dato» y «sin plan ni resultado» debajo de un canal
+   * que en la línea siguiente enseñaba «6 leads de 6 del plan». Las dos
+   * frases hablaban del PRECIO —que en efecto no existe—, pero puestas en la
+   * cabecera de la celda se leían como que el canal entero estaba vacío. Se
+   * dice lo que pasa y se quita el semáforo: sin coste no hay nada que juzgar.
+   */
+  const sinGasto = (fila.gastoReal ?? 0) === 0 && (fila.gastoPlan ?? 0) === 0
+  const hayLeads = (fila.leadsReal ?? 0) > 0 || (fila.leadsPlan ?? 0) > 0
+  const gratis = sinGasto && hayLeads
+  const relacion = gratis ? 'sin gasto imputado a este canal' : lectura.relacion
+
   return (
     <section
       data-celda={indice}
       tabIndex={0}
-      aria-label={`${fila.nombre}: ${lectura.cifra} por lead, ${lectura.relacion}; ${ETIQUETAS_ESTADO[punto.estado]}. ${enPalabras(gasto)} del gasto y ${enPalabras(leadsTexto)} de los leads.`}
+      aria-label={
+        gratis
+          ? `${fila.nombre}: ${relacion}. ${enPalabras(leadsTexto)} de los leads.`
+          : `${fila.nombre}: ${lectura.cifra} por lead, ${relacion}; ${ETIQUETAS_ESTADO[punto.estado]}. ${enPalabras(gasto)} del gasto y ${enPalabras(leadsTexto)} de los leads.`
+      }
       onPointerEnter={() => onResaltar(fila.canal)}
       onPointerLeave={() => onResaltar(null)}
       onFocus={() => onResaltar(fila.canal)}
@@ -969,10 +1089,12 @@ function CeldaCanal({
       <div className="transition-opacity duration-200" style={{ opacity: opacidad }}>
         <div className="flex items-center justify-between gap-3">
           {titulo}
-          <Semaforo
-            estado={punto.estado}            cumplimiento={punto.cumplimiento}
-            tamano="sm"
-          />
+          {!gratis && (
+            <Semaforo
+              estado={punto.estado}              cumplimiento={punto.cumplimiento}
+              tamano="sm"
+            />
+          )}
         </div>
 
         <p className="mt-4 flex flex-wrap items-baseline gap-x-2">
@@ -988,7 +1110,7 @@ function CeldaCanal({
           </span>
           <span className="text-xs text-muted-foreground">por lead</span>
         </p>
-        <p className="mt-2 text-xs text-muted-foreground tabular-nums">{lectura.relacion}</p>
+        <p className="mt-2 text-xs text-muted-foreground tabular-nums">{relacion}</p>
 
         {/* Lo que trajo el canal, contra su plan: el otro lado del precio. */}
         {(fila.leadsReal !== null || fila.leadsPlan !== null) && (
@@ -1047,6 +1169,37 @@ function LeyendaCanales({ colores }: { colores: string[] }) {
         Plan
       </span>
     </div>
+  )
+}
+
+/**
+ * Qué canal es cada color: una pastilla por canal, con su icono y su nombre.
+ *
+ * Hacía falta desde que el gráfico dibuja los canales del plan y no tres. En
+ * una hoja estrecha, un canal de 7 px no tiene sitio ni para su icono, y sin
+ * esta tira su color no significaría nada hasta llegar a las celdas de abajo.
+ * Con dos o más series la leyenda deja de ser un adorno: es lo que impide que
+ * la identidad dependa solo del color, que es justo lo que no ve quien no
+ * distingue esos colores.
+ */
+function LeyendaDeCanales({ filas }: { filas: readonly FilaCanal[] }) {
+  return (
+    <ul className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs">
+      {filas.map((f) => {
+        const Icono = ICONO_CANAL[f.canal]
+        return (
+          <li key={f.canal} className="flex items-center gap-1.5 text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="size-2.5 shrink-0 rounded-[3px]"
+              style={{ backgroundColor: f.color }}
+            />
+            <Icono aria-hidden="true" size={13} strokeWidth={1.75} className="shrink-0" />
+            {f.nombre}
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
