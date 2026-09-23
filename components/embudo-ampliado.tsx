@@ -88,11 +88,10 @@ export function EmbudoAmpliado({
   /**
    * El viaje de un mes a otro.
    *
-   * El gráfico ya se rehace solo: su `clave` lleva los meses de la ventana, y
-   * al cambiar de mes vuelve a trazarse el plan, a dibujarse la curva y a
-   * contar la cifra. Lo que faltaba era que el resto fuera con él —el rótulo
-   * y las tablas del pie cambiaban de golpe, como si fuera otra pantalla— y
-   * que se notara HACIA DÓNDE se va.
+   * Sin esto, al cambiar de mes todo cambiaba de golpe —rótulo, gráfico y
+   * tablas—, como si fuera otra pantalla, y no se notaba HACIA DÓNDE se iba.
+   * (La ficha ampliada no tiene entrada propia: la de GSAP vive en la rejilla
+   * de fichas. Esta timeline es lo único que se mueve aquí.)
    *
    * Por eso todo entra del lado del que se viene: el rótulo, el cuerpo entero
    * y, detrás, las filas del pie escalonadas. Es el gesto de pasar una

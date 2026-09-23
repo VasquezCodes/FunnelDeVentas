@@ -76,7 +76,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { colorDeFamilia, configPlanReal } from '@/components/graficos/config'
-import { indicesSueltos, lecturaDe, type PuntoDeSerie } from '@/components/graficos/fichas'
+import {
+  indicesSueltos,
+  lecturaDe,
+  mesEnFrase,
+  proyectadoEn,
+  type PuntoDeSerie,
+} from '@/components/graficos/fichas'
 import { LeyendaPlanReal } from '@/components/graficos/leyenda-plan-real'
 import { proyectar } from '@/lib/proyeccion'
 import { TarjetaGrafico } from '@/components/graficos/tarjeta-grafico'
@@ -375,18 +381,36 @@ export function Tendencias({
 
   const formatear = (n: number) => formatearValor(n, unidad)
   const relacion = unidad === 'porcentaje' ? 'frente' : 'de'
-  const lectura = lecturaDe(formatear, relacion, {
-    plan: puntoMostrado?.meta ?? null,
-    real: puntoMostrado?.real ?? null,
-    cumplimiento: puntoMostrado?.cumplimiento ?? null,
-    estado: puntoMostrado?.estado ?? 'sin-dato',
-  })
+  const lectura = lecturaDe(
+    formatear,
+    relacion,
+    {
+      plan: puntoMostrado?.meta ?? null,
+      real: puntoMostrado?.real ?? null,
+      cumplimiento: puntoMostrado?.cumplimiento ?? null,
+      estado: puntoMostrado?.estado ?? 'sin-dato',
+    },
+    // El mes entra en la frase al señalar uno que no es el elegido: sin él,
+    // un mes proyectado se leía «proyección para este mes».
+    activo !== null && puntoMostrado ? mesEnFrase(puntoMostrado.periodo) : undefined,
+    // Al señalar un mes proyectado, la cifra es lo proyectado, igual que en
+    // las fichas: el punto de anillo está a esa altura.
+    proyectadoEn(proyeccion, mostrado),
+  )
   const puntoElegido = visibles[elegido] ?? null
-  const valorElegido = puntoElegido ? (puntoElegido.real ?? puntoElegido.meta) : null
+  // La entrada cuenta hasta lo que se enseña: real, si no proyección, si no plan.
+  const valorElegido = puntoElegido
+    ? (puntoElegido.real ?? proyectadoEn(proyeccion, elegido) ?? puntoElegido.meta)
+    : null
 
   /** Máximo global, para saber si hay algo que dibujar; el de la vista, para la escala. */
   const maximoTotal = datos.reduce((mayor, p) => Math.max(mayor, p.meta ?? 0, p.real ?? 0), 0)
-  const maximo = visibles.reduce((mayor, p) => Math.max(mayor, p.meta ?? 0, p.real ?? 0), 0)
+  // La proyección entra en la escala: si pasa de todo lo demás, sin esto el
+  // punto de anillo se saldría por arriba del gráfico.
+  const maximo = Math.max(
+    visibles.reduce((mayor, p) => Math.max(mayor, p.meta ?? 0, p.real ?? 0), 0),
+    ...(proyeccion?.puntos.map((p) => p.valor) ?? []),
+  )
   const estrecho = ancho !== null && ancho < ANCHO_ESTRECHO
   const tamanoEje = TAMANO_EJE * escalaTexto
 

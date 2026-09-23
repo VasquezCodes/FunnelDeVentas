@@ -61,7 +61,7 @@ import {
 } from '@/components/graficos/use-entrada-grafico'
 import { Semaforo } from '@/components/semaforo'
 import { tramoProyectado } from '@/components/graficos/tramo-proyectado'
-import { proyectar } from '@/lib/proyeccion'
+import { proyectar, type Proyeccion } from '@/lib/proyeccion'
 import { gsap } from '@/lib/animacion'
 import { ETIQUETAS_ESTADO, SIN_DATO, calcularEstado } from '@/lib/comparacion'
 import {
@@ -125,14 +125,30 @@ export function indiceEnCurso(ventana: readonly Periodo[]): number {
  * proyección que no se dibuja sería peor que no anunciarla.
  */
 export function hayProyeccion(fichas: readonly Ficha[], ventana: readonly Periodo[]): boolean {
-  const enCurso = indiceEnCurso(ventana)
-  return fichas.some(
-    (f) =>
-      proyectar(
-        ventana.map((_, i) => ({ plan: f.puntos[i]?.plan ?? null, real: f.puntos[i]?.real ?? null })),
-        { enCurso },
-      ) !== null,
+  return fichas.some((f) => proyeccionDe(f, ventana) !== null)
+}
+
+/**
+ * La proyección de una ficha en su ventana, o null si no hay con qué.
+ *
+ * Una sola cuenta para los tres sitios que la usan —el trazo del gráfico, la
+ * cifra que se lee al señalar un mes y la leyenda—: si cada uno la hiciera a
+ * su manera, el punto de anillo podría estar a una altura y la cifra decir
+ * otra.
+ */
+export function proyeccionDe(ficha: Ficha, ventana: readonly Periodo[]): Proyeccion | null {
+  return proyectar(
+    ventana.map((_, i) => ({
+      plan: ficha.puntos[i]?.plan ?? null,
+      real: ficha.puntos[i]?.real ?? null,
+    })),
+    { enCurso: indiceEnCurso(ventana) },
   )
+}
+
+/** Lo proyectado para un mes concreto de la ventana, o null. */
+export function proyectadoEn(proyeccion: Proyeccion | null, indice: number): number | null {
+  return proyeccion?.puntos.find((p) => p.indice === indice)?.valor ?? null
 }
 
 export { LARGO_VENTANA, ventanaDe } from '@/components/graficos/ventana'
@@ -204,15 +220,47 @@ export interface Lectura {
 /**
  * `mes`, si se pasa, entra en la frase («de 222 del plan en junio»): es lo
  * que dice qué mes se lee cuando no es el elegido.
+ *
+ * `proyectado` es lo que el tablero proyecta para ese mes, si lo proyecta
+ * (`lib/proyeccion.ts`). En un mes sin resultado manda sobre el plan: el
+ * punto de anillo del gráfico está a esa altura, y al señalarlo la cifra
+ * tiene que ser la suya. Antes se leía el plan («previsto para octubre»)
+ * debajo de un punto que estaba en otro sitio, y la cantidad proyectada no
+ * se decía en ninguna parte. El plan no se pierde: va en la frase, para ver
+ * a la vez cuánto se proyecta y contra qué.
  */
 export function lecturaDe(
   formatear: (valor: number) => string,
   relacion: 'de' | 'frente',
   punto: PuntoFicha,
   mes?: string,
+  proyectado?: number | null,
 ): Lectura {
   const { plan, real } = punto
   const enMes = mes ? ` en ${mes}` : ''
+  if (real === null && proyectado != null) {
+    // Con la granularidad del plan: si el plan es entero, la proyección
+    // también. «469,62 leads» es una precisión que la cuenta no tiene —es un
+    // plan por un ritmo medio— y los decimales la harían parecer un dato.
+    const cifra = plan !== null && Number.isInteger(plan) ? Math.round(proyectado) : proyectado
+    const para = mes ? `para ${mes}` : 'para este mes'
+    // Qué parte del plan se proyecta: es la otra mitad de la pregunta, «¿y
+    // eso es mucho o poco?», y sin ella había que dividir de cabeza.
+    const parte = plan !== null && plan > 0 ? `el ${Math.round((proyectado / plan) * 100)} % ` : ''
+    const contra =
+      plan === null
+        ? 'sin plan'
+        : relacion === 'de'
+          ? `${parte}de ${formatear(plan)} del plan`
+          : `frente a ${formatear(plan)} del plan`
+    return {
+      cifra: formatear(cifra),
+      valor: cifra,
+      // En gris, como todo lo que todavía no ha pasado.
+      apagada: true,
+      relacion: `proyección ${para} · ${contra}`,
+    }
+  }
   if (real !== null) {
     const frase =
       plan === null
@@ -323,7 +371,7 @@ export function RejillaFichas({
     ambito: refHoja,
     firma,
     datos,
-    construir: (raiz, herramientas) => construirEntrada(raiz, herramientas, fichas, elegido),
+    construir: (raiz, herramientas) => construirEntrada(raiz, herramientas, fichas, elegido, ventana),
   })
 
   return (
@@ -409,11 +457,19 @@ export function CeldaFicha({
   const mostrado = activo ?? elegido
   const periodoMostrado = ventana[mostrado]
   const punto = ficha.puntos[mostrado] ?? PUNTO_VACIO
+
+  // La proyección de los meses sin resultado: el plan de cada uno al ritmo
+  // al que se viene cumpliendo (lib/proyeccion.ts). Null si no hay con qué.
+  // Va antes de la lectura porque la lectura la necesita: al señalar un mes
+  // proyectado, la cifra es lo proyectado y no el plan.
+  const proyeccion = useMemo(() => proyeccionDe(ficha, ventana), [ficha, ventana])
+
   const lectura = lecturaDe(
     ficha.formatear,
     ficha.relacion,
     punto,
     activo !== null && periodoMostrado ? mesEnFrase(periodoMostrado) : undefined,
+    proyectadoEn(proyeccion, mostrado),
   )
   const { Icono } = ficha
 
@@ -457,23 +513,6 @@ export function CeldaFicha({
     [ficha.color],
   )
 
-  // Un mes a medias (solo en meses, nunca en quincenas) va punteado: su real
-  // es «a la fecha» y, sin marca, la curva parecería hundirse.
-  const enCurso = indiceEnCurso(ventana)
-
-  // La proyección del primer mes sin resultado: el plan de ese mes al ritmo
-  // al que se viene cumpliendo (lib/proyeccion.ts). Null si no hay con qué.
-  const proyeccion = useMemo(
-    () =>
-      proyectar(
-        ventana.map((_, i) => ({
-          plan: ficha.puntos[i]?.plan ?? null,
-          real: ficha.puntos[i]?.real ?? null,
-        })),
-        { enCurso },
-      ),
-    [ventana, ficha.puntos, enCurso],
-  )
 
   const datos = useMemo(
     () =>
@@ -890,6 +929,7 @@ function construirEntrada(
   { contar }: HerramientasEntrada,
   fichas: Ficha[],
   elegido: number,
+  ventana: readonly Periodo[],
 ): gsap.core.Timeline | null {
   const celdas = Array.from(raiz.querySelectorAll<HTMLElement>('[data-ficha]'))
   if (celdas.length === 0) return null
@@ -956,7 +996,15 @@ function construirEntrada(
     }
 
     const lectura = ficha
-      ? lecturaDe(ficha.formatear, ficha.relacion, ficha.puntos[elegido] ?? PUNTO_VACIO)
+      ? lecturaDe(
+          ficha.formatear,
+          ficha.relacion,
+          ficha.puntos[elegido] ?? PUNTO_VACIO,
+          undefined,
+          // Cuenta hasta lo mismo que se enseña: si el mes elegido es
+          // proyectado, hasta la proyección y no hasta el plan.
+          proyectadoEn(proyeccionDe(ficha, ventana), elegido),
+        )
       : null
     if (cifra && ficha && lectura?.valor != null) {
       const cuenta = contar(cifra, lectura.valor, ficha.formatear, 0.9)
