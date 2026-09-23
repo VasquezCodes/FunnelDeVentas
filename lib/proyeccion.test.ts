@@ -6,15 +6,16 @@ import { proyectar, type PuntoPlanReal } from '@/lib/proyeccion'
 const p = (plan: number | null, real: number | null): PuntoPlanReal => ({ plan, real })
 
 describe('proyectar', () => {
-  it('proyecta el plan del mes siguiente al ritmo de los tres cerrados', () => {
+  it('proyecta el plan del mes siguiente al ritmo de los tres últimos', () => {
     const serie = [p(400, 412), p(290, 191), p(96, 105), p(280, null)]
     const proyeccion = proyectar(serie)!
 
-    // (412/400 + 191/290 + 105/96) / 3 = 0,92746…
+    // Agregado y ponderado, del más reciente al más antiguo (3·2·1):
+    // (3·105 + 2·191 + 1·412) / (3·96 + 2·290 + 1·400) = 1109 / 1268
     expect(proyeccion.puntos[0].indice).toBe(3)
     expect(proyeccion.mesesDeRitmo).toBe(3)
-    expect(proyeccion.ritmo).toBeCloseTo(0.92746, 5)
-    expect(proyeccion.puntos[0].valor).toBeCloseTo(259.69, 2)
+    expect(proyeccion.ritmo).toBeCloseTo(1109 / 1268, 10)
+    expect(proyeccion.puntos[0].valor).toBeCloseTo(280 * (1109 / 1268), 6)
   })
 
   it('respeta la forma del plan: un mes de vacaciones proyecta bajo', () => {
@@ -31,16 +32,19 @@ describe('proyectar', () => {
     expect(proyectar(serie)!.puntos[0].valor).toBeCloseTo(200, 5)
   })
 
-  it('el mes a medias marca dónde proyectar pero no entra en el ritmo', () => {
-    // Septiembre lleva media quincena: 74 contra un plan mensual de 280
-    // sería un 26 % y hundiría la media. Cuenta como último dato, nada más.
-    const serie = [p(400, 400), p(290, 290), p(96, 96), p(280, 74), p(300, null)]
-    const proyeccion = proyectar(serie, { enCurso: 3 })!
+  it('el mes a medias entra en el ritmo: su plan ya es el de la quincena', () => {
+    // Así llega del tablero (metasDelMes): septiembre con media quincena trae
+    // el plan de esa quincena, 140, y no el del mes, 280. Es el dato más
+    // fresco, y con él el ritmo nota que septiembre va flojo.
+    const serie = [p(400, 400), p(290, 290), p(96, 96), p(140, 70), p(300, null)]
+    const conEl = proyectar(serie, { enCurso: 3 })!
+    const sinEl = proyectar(serie, { enCurso: 3, conMesEnCurso: false })!
 
-    expect(proyeccion.puntos[0].indice).toBe(4)
-    expect(proyeccion.mesesDeRitmo).toBe(3)
-    expect(proyeccion.ritmo).toBeCloseTo(1, 5)
-    expect(proyeccion.puntos[0].valor).toBeCloseTo(300, 5)
+    expect(conEl.puntos[0].indice).toBe(4)
+    expect(sinEl.ritmo).toBeCloseTo(1, 10)
+    // (3·70 + 2·96 + 1·290) / (3·140 + 2·96 + 1·290) = 692 / 902
+    expect(conEl.ritmo).toBeCloseTo(692 / 902, 10)
+    expect(conEl.ritmo).toBeLessThan(sinEl.ritmo)
   })
 
   it('sin ningún mes cerrado no se proyecta: no hay ritmo que medir', () => {
@@ -93,12 +97,39 @@ describe('proyectar, varios meses', () => {
     // Un mes sin capturar en medio no abre una proyección: lo que manda es
     // hasta dónde llegan los resultados.
     const serie = [p(100, 90), p(200, null), p(400, 380), p(500, null)]
-    // ritmo = media(380/400, 90/100) = 0,925 → 500 × 0,925
-    expect(proyectar(serie)!.puntos).toEqual([{ indice: 3, valor: 462.5 }])
+    // (3·380 + 2·90) / (3·400 + 2·100) = 1320 / 1400
+    const { puntos } = proyectar(serie)!
+    expect(puntos).toHaveLength(1)
+    expect(puntos[0].indice).toBe(3)
+    expect(puntos[0].valor).toBeCloseTo(500 * (1320 / 1400), 10)
   })
 
   it('se para donde el plan se acaba, sin dejar huecos en el trazo', () => {
     const serie = [p(100, 90), p(200, null), p(null, null), p(400, null)]
     expect(proyectar(serie)!.puntos).toEqual([{ indice: 1, valor: 180 }])
+  })
+})
+
+describe('por qué el ritmo es agregado y ponderado', () => {
+  it('un mes pequeño con suerte no dispara la proyección', () => {
+    // Ventas: un mes de plan 2 con 5 ventas es un 250 %. En una media vale
+    // lo mismo que un mes de plan 100, y la proyección se va un 45 % arriba.
+    // En el agregado aporta 5 de 190 y pesa lo que pesa.
+    const serie = [p(100, 90), p(100, 95), p(2, 5), p(100, null)]
+    const media = proyectar(serie, { ritmo: 'media', pesos: [1, 1, 1] })!
+    const agregado = proyectar(serie, { pesos: [1, 1, 1] })!
+
+    expect(media.ritmo).toBeCloseTo((0.9 + 0.95 + 2.5) / 3, 10) // 1,45
+    expect(agregado.ritmo).toBeCloseTo(190 / 202, 10) // 0,94
+  })
+
+  it('el último mes pesa más: si el ritmo cambia, la proyección lo nota antes', () => {
+    // Tres meses en plan y el último al 70 %: una media plana diría 90 %.
+    const serie = [p(100, 100), p(100, 100), p(100, 70), p(100, null)]
+    const plano = proyectar(serie, { pesos: [1, 1, 1] })!
+    const ponderado = proyectar(serie)!
+
+    expect(plano.ritmo).toBeCloseTo(0.9, 10)
+    expect(ponderado.ritmo).toBeCloseTo((3 * 70 + 2 * 100 + 100) / 600, 10) // 0,85
   })
 })

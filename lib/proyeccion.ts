@@ -54,14 +54,47 @@ export interface Proyeccion {
 /** Meses cerrados que entran en el ritmo. Tres: un trimestre, y aguanta un mes raro. */
 export const MESES_DE_RITMO = 3
 
+/**
+ * Cuánto pesa cada mes en el ritmo, del más reciente al más antiguo. El
+ * último mes dice más de cómo va el equipo que el de hace tres: si el ritmo
+ * está cambiando, una media plana llega tarde.
+ */
+export const PESOS_POR_ANTIGUEDAD: readonly number[] = [3, 2, 1]
+
 export interface OpcionesProyeccion {
   /**
-   * Posición del mes a medias, si lo hay. Cuenta como último dato —su real
-   * es el de la fecha— pero NO entra en el ritmo: compararía media quincena
-   * contra el plan del mes entero y hundiría la media.
+   * Posición del mes a medias, si lo hay.
+   *
+   * ENTRA en el ritmo, y es a propósito. Hubo una versión que lo dejaba
+   * fuera suponiendo que su plan era el del mes entero —media quincena
+   * contra un mes completo hundiría la media—. El supuesto era falso: el
+   * tablero le da al mes a medias el plan de lo que ya pasó
+   * (`metasDelMes`), así que «219 de 222» compara quincena con quincena. Y
+   * es el dato más fresco que hay: descartarlo era proyectar con lo de hace
+   * un mes teniendo lo de hace quince días.
+   *
+   * Se conserva para poder evaluar la versión anterior (`conMesEnCurso`).
    */
   enCurso?: number
+  /** Si es false, el mes a medias no entra en el ritmo. Por defecto, true. */
+  conMesEnCurso?: boolean
   mesesDeRitmo?: number
+  /** Ver `PESOS_POR_ANTIGUEDAD`. `[1, 1, 1]` es una media plana. */
+  pesos?: readonly number[]
+  /**
+   * Cómo se resume el ritmo de varios meses:
+   *
+   *   · 'agregado' (por defecto): lo real de todos entre lo planeado de
+   *     todos, con sus pesos. Un mes grande pesa más que uno pequeño.
+   *   · 'media': la media de los cumplimientos de cada mes.
+   *
+   * Parecen lo mismo y no lo son cuando el plan es pequeño. Con ventas —dos,
+   * tres, cinco al mes— un mes de plan 2 con 5 ventas es un 250 %, y en una
+   * media vale lo mismo que un mes de plan 100: un solo mes pequeño con
+   * suerte dispara la proyección. En el agregado, ese mes aporta 5 de 190 y
+   * pesa lo que pesa.
+   */
+  ritmo?: 'agregado' | 'media'
   /**
    * Cuántos meses seguidos se proyectan. Dos, y no uno, por una razón de
    * dibujo que se paga en el sitio correcto: el tramo punteado arranca en el
@@ -83,8 +116,11 @@ export function proyectar(
   puntos: readonly PuntoPlanReal[],
   {
     enCurso = -1,
+    conMesEnCurso = true,
     mesesDeRitmo = MESES_DE_RITMO,
     meses = MESES_PROYECTADOS,
+    pesos = PESOS_POR_ANTIGUEDAD,
+    ritmo: forma = 'agregado',
   }: OpcionesProyeccion = {},
 ): Proyeccion | null {
   // El periodo desde el que se proyecta: el último con resultado.
@@ -94,16 +130,30 @@ export function proyectar(
   }
   if (ultimo < 0) return null
 
-  const cumplimientos: number[] = []
-  for (let i = ultimo; i >= 0 && cumplimientos.length < mesesDeRitmo; i--) {
-    if (i === enCurso) continue
+  // Los meses que entran en el ritmo, del más reciente al más antiguo.
+  const muestras: Array<{ plan: number; real: number }> = []
+  for (let i = ultimo; i >= 0 && muestras.length < mesesDeRitmo; i--) {
+    if (!conMesEnCurso && i === enCurso) continue
     const { plan, real } = puntos[i]
     if (real === null || plan === null || plan <= 0) continue
-    cumplimientos.push(real / plan)
+    muestras.push({ plan, real })
   }
-  if (cumplimientos.length === 0) return null
+  if (muestras.length === 0) return null
 
-  const ritmo = cumplimientos.reduce((suma, c) => suma + c, 0) / cumplimientos.length
+  // El peso de cada mes por su antigüedad; si hay más meses que pesos, los
+  // de más atrás se quedan con el último.
+  const peso = (k: number) => pesos[Math.min(k, pesos.length - 1)] ?? 1
+
+  let ritmo: number
+  if (forma === 'media') {
+    const total = muestras.reduce((s, _, k) => s + peso(k), 0)
+    ritmo = muestras.reduce((s, m, k) => s + peso(k) * (m.real / m.plan), 0) / total
+  } else {
+    const real = muestras.reduce((s, m, k) => s + peso(k) * m.real, 0)
+    const plan = muestras.reduce((s, m, k) => s + peso(k) * m.plan, 0)
+    ritmo = real / plan
+  }
+  const cumplimientos = muestras
 
   // Los meses que vienen, mientras sigan vacíos y con plan que escalar. Se
   // para en el primero que no cumpla: un hueco en medio partiría el trazo.
