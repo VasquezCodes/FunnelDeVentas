@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { fraunces, geistSans, geistMono } from '@/lib/fonts'
+import { montserrat, geistMono } from '@/lib/fonts'
 import { Toaster } from '@/components/ui/sonner'
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${fraunces.variable} ${geistSans.variable} ${geistMono.variable}`}
+      className={`${montserrat.variable} ${geistMono.variable}`}
     >
       <head>
         {/*
@@ -29,13 +29,18 @@ export default function RootLayout({
 
           El claro es el modo de la casa y NO se sigue la preferencia del
           sistema. Es una decisión, no un descuido: este tablero se lee sobre
-          papel cálido, con las cifras en tinta, y esa es la lectura para la
+          papel, con las cifras en tinta, y esa es la lectura para la
           que está calibrado. Quien quiera el oscuro lo elige con el botón y
           entonces sí se recuerda.
+
+          Dentro del plan de negocio (en su iframe) se marca el <html> con
+          `data-embebido`: el plan ya pone la marca y solo tiene tema claro,
+          así que la barra esconde el logo y el botón de tema y no se aplica
+          el oscuro guardado.
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem('tema')==='oscuro')document.documentElement.classList.add('dark')}catch(e){}`,
+            __html: `try{var h=document.documentElement;if(self!==top)h.dataset.embebido='';else if(localStorage.getItem('tema')==='oscuro')h.classList.add('dark')}catch(e){}`,
           }}
         />
       </head>

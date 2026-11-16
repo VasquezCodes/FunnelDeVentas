@@ -31,7 +31,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import type { Icon } from '@phosphor-icons/react'
+import type { LucideIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { gsap, prefiereQuietud, useGSAP } from '@/lib/animacion'
@@ -40,7 +40,7 @@ export interface Panel {
   id: string
   clave: string
   /** Icono de la sección en el raíl. */
-  icono?: Icon
+  icono?: LucideIcon
   titulo: string
   /** Marca el raíl si esta sección tiene algo que mirar. */
   avisa?: boolean
@@ -192,7 +192,7 @@ export function Carrusel({ paneles }: CarruselProps) {
               <span className="flex items-center gap-1.5">
                 {Icono && (
                   <Icono
-                    weight="duotone"
+                    strokeWidth={1.5}
                     aria-hidden="true"
                     className={cn(
                       'transicion-fluida size-3.5 shrink-0 transition-colors duration-300',

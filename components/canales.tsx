@@ -67,7 +67,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { MagnetIcon } from '@phosphor-icons/react/ssr'
+import { Magnet } from 'lucide-react'
 
 import {
   HojaVacia,
@@ -379,7 +379,7 @@ function ConmutadorCanales({
     <div
       role="group"
       aria-label="Qué canales ver"
-      className="flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-full p-1"
+      className="flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-md p-[3px]"
       style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
     >
       {opciones.map(({ id, etiqueta, Icono }) => {
@@ -391,11 +391,11 @@ function ConmutadorCanales({
             aria-pressed={activo}
             onClick={() => onCambiar(id)}
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-medium',
+              'flex h-8 items-center gap-1.5 rounded-md px-3.5 text-[0.8125rem] font-medium',
               'transition-[background-color,color,box-shadow] duration-200',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               activo
-                ? 'bg-background text-foreground shadow-(--sombra-tray)'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
             style={{ transitionTimingFunction: 'var(--ease-fluid)' }}
@@ -507,7 +507,7 @@ function CanalesGeneral({
   if (!hayCifras) {
     return (
       <HojaVacia
-        Icono={MagnetIcon}
+        Icono={Magnet}
         titulo={soloCanal ? 'Todavía no hay nada que dibujar' : 'Todavía no hay canales que dibujar'}
         motivo={
           soloCanal
@@ -806,7 +806,7 @@ function ValorBarra({
           data-total={dato}
           data-final={lectura.cifra}
           className={cn(
-            'font-display text-[1.625rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+            'cifra text-[1.625rem] leading-none font-medium tracking-[-0.02em]',
             lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
           )}
         >
@@ -848,7 +848,7 @@ function CabeceraBarra({
         data-total={dato}
         data-final={lectura.cifra}
         className={cn(
-          'font-display text-[1.75rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+          'cifra text-[1.75rem] leading-none font-medium tracking-[-0.02em]',
           lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
         )}
       >
@@ -1102,7 +1102,7 @@ function CeldaCanal({
             data-precio={indice}
             data-final={lectura.cifra}
             className={cn(
-              'font-display text-[2.25rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+              'cifra text-[2.25rem] leading-none font-medium tracking-[-0.02em]',
               lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
             )}
           >

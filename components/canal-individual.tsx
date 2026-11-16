@@ -202,7 +202,7 @@ function Cifra({
       </div>
       <p
         className={cn(
-          'font-display mt-3 text-[2rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+          'cifra mt-3 text-[2rem] leading-none font-medium tracking-[-0.02em]',
           lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
         )}
       >
@@ -234,7 +234,7 @@ function Paso({
       <span className="text-xs text-muted-foreground">{nombre}</span>
       <span
         className={cn(
-          'font-display mt-1.5 text-[1.5rem] leading-none font-normal tracking-[-0.01em] proportional-nums',
+          'cifra mt-1.5 text-[1.5rem] leading-none font-medium tracking-[-0.01em]',
           lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
         )}
       >

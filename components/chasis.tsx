@@ -21,8 +21,7 @@
  */
 
 import Image from 'next/image'
-import { BookOpenTextIcon, MoonStarsIcon, PencilSimpleLineIcon, SunDimIcon } from '@phosphor-icons/react/ssr'
-import type { Icon } from '@phosphor-icons/react'
+import { BookOpenText, MoonStar, PencilLine, Sun, type LucideIcon } from 'lucide-react'
 import { useCallback, useSyncExternalStore } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -44,9 +43,9 @@ interface ChasisProps {
  * hay»; un libro y un lápiz dicen «qué vas a hacer», que es lo que se decide
  * al pulsar.
  */
-const VISTAS: Array<{ id: Vista; etiqueta: string; Icono: Icon }> = [
-  { id: 'tablero', etiqueta: 'Tablero', Icono: BookOpenTextIcon },
-  { id: 'captura', etiqueta: 'Capturar datos', Icono: PencilSimpleLineIcon },
+const VISTAS: Array<{ id: Vista; etiqueta: string; Icono: LucideIcon }> = [
+  { id: 'tablero', etiqueta: 'Tablero', Icono: BookOpenText },
+  { id: 'captura', etiqueta: 'Capturar datos', Icono: PencilLine },
 ]
 
 export function Chasis({ vista, onCambiarVista, controles, children }: ChasisProps) {
@@ -65,13 +64,13 @@ export function Chasis({ vista, onCambiarVista, controles, children }: ChasisPro
 
           {/* En móvil el botón de tema sube a la fila de la marca: en la fila
               del periodo no cabía y empujaba la página a 498 px de ancho. */}
-          <div className="ml-auto sm:hidden">
+          <div className="ml-auto sm:hidden in-data-embebido:hidden!">
             <BotonTema />
           </div>
 
           <span
             aria-hidden="true"
-            className="hidden h-7 w-px shrink-0 sm:block"
+            className="hidden h-7 w-px shrink-0 sm:block in-data-embebido:hidden!"
             style={{ backgroundColor: 'var(--regla)' }}
           />
 
@@ -84,11 +83,11 @@ export function Chasis({ vista, onCambiarVista, controles, children }: ChasisPro
             {controles && (
               <span
                 aria-hidden="true"
-                className="hidden h-6 w-px shrink-0 sm:block"
+                className="hidden h-6 w-px shrink-0 sm:block in-data-embebido:hidden!"
                 style={{ backgroundColor: 'var(--regla)' }}
               />
             )}
-            <div className="hidden sm:block">
+            <div className="hidden sm:block in-data-embebido:hidden!">
               <BotonTema />
             </div>
           </div>
@@ -117,7 +116,7 @@ export function Chasis({ vista, onCambiarVista, controles, children }: ChasisPro
  */
 function Marca() {
   return (
-    <div className="flex shrink-0 items-center">
+    <div className="flex shrink-0 items-center in-data-embebido:hidden">
       <Image
         src="/marca/logo-negro.png"
         alt="Bastida &amp; Farina"
@@ -141,18 +140,15 @@ function Marca() {
 /* ── Navegación ─────────────────────────────────────────────────────────── */
 
 /**
- * Cambia de MODO, no de sección: leer o capturar. Por eso sigue siendo un
- * control segmentado —dos estados excluyentes, ambos visibles— y no el
- * subrayado que usa el raíl de secciones dentro del tablero. Dos gestos
- * distintos, dos formas distintas.
+ * Cambia de MODO, no de sección: leer o capturar. Por eso es un control
+ * segmentado —dos estados excluyentes, ambos visibles— y no el subrayado que
+ * usa el raíl de secciones dentro del tablero. Tiene el dibujo de las
+ * pestañas del plan de negocio: el activo en blanco sobre el hundido y, como
+ * en su menú, el icono del sitio donde estás en carmín.
  */
 function NavVistas({ vista, onCambiarVista }: Pick<ChasisProps, 'vista' | 'onCambiarVista'>) {
   return (
-    <nav
-      aria-label="Vistas"
-      className="flex items-center gap-0.5 rounded-full p-0.5"
-      style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
-    >
+    <nav aria-label="Vistas" className="flex items-center gap-0.5 rounded-md bg-muted p-[3px]">
       {VISTAS.map(({ id, etiqueta, Icono }) => {
         const activa = id === vista
         return (
@@ -164,32 +160,19 @@ function NavVistas({ vista, onCambiarVista }: Pick<ChasisProps, 'vista' | 'onCam
             className={cn(
               // El icono pesa a la izquierda: el relleno corto de ese lado lo
               // compensa, para que se vea centrado el conjunto y no el texto.
-              'flex items-center gap-2 rounded-full py-2 pr-4 pl-3 text-sm font-medium',
-              'transition-[background-color,color,transform] duration-300',
-              'active:scale-[0.98]',
+              'flex h-8 items-center gap-2 rounded-md pr-3.5 pl-2.5 text-sm font-medium',
+              'transition-[background-color,color,box-shadow] duration-200',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-              activa ? 'shadow-[var(--sombra-tray)]' : 'text-muted-foreground hover:text-foreground',
+              activa
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
             )}
-            style={{
-              transitionTimingFunction: 'var(--ease-fluid)',
-              // Carmín de marca en el modo activo. Es cromo, no dato: dice
-              // «estás aquí». Blanco sobre carmín mide 6,4:1, de sobra para
-              // un texto de este cuerpo.
-              ...(activa
-                ? { backgroundColor: 'var(--brand)', color: 'var(--primary-foreground)' }
-                : {}),
-            }}
+            style={{ transitionTimingFunction: 'var(--ease-fluid)' }}
           >
-            {/*
-              Duotono: el trazo y una aguada del mismo tono al 20 %. Fuera del
-              modo activo va en carmín —es cromo de marca, no dato—; dentro, el
-              fondo ya es carmín, así que pasa al color del texto por
-              `currentColor` y la aguada se vuelve un velo claro sobre la marca.
-            */}
             <Icono
-              weight="duotone"
+              strokeWidth={1.5}
               aria-hidden="true"
-              className={cn('size-4 shrink-0', !activa && 'text-brand')}
+              className={cn('size-4 shrink-0', activa && 'text-brand')}
             />
             {etiqueta}
           </button>
@@ -244,7 +227,7 @@ function BotonTema() {
       onClick={alternar}
       aria-label={oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       className={cn(
-        'flex size-9 shrink-0 items-center justify-center rounded-full border',
+        'flex size-9 shrink-0 items-center justify-center cuenco-s border',
         'text-muted-foreground hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-foreground',
         'transition-[color,background-color,transform] duration-300 active:scale-[0.95]',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
@@ -255,9 +238,9 @@ function BotonTema() {
           luna con estrellas en el claro. En carmín, como el resto de los
           controles de la barra. */}
       {oscuro ? (
-        <SunDimIcon weight="duotone" aria-hidden="true" className="size-4 text-brand" />
+        <Sun strokeWidth={1.5} aria-hidden="true" className="size-4 text-brand" />
       ) : (
-        <MoonStarsIcon weight="duotone" aria-hidden="true" className="size-4 text-brand" />
+        <MoonStar strokeWidth={1.5} aria-hidden="true" className="size-4 text-brand" />
       )}
     </button>
   )

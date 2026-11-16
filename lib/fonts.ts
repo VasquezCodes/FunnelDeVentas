@@ -1,14 +1,12 @@
-import { Fraunces } from 'next/font/google'
-import { GeistSans } from 'geist/font/sans'
+import { Montserrat } from 'next/font/google'
 import { GeistMono } from 'geist/font/mono'
 
-// Mismas familias que el resto del ecosistema Bastida & Farina.
-export const fraunces = Fraunces({
+// Las mismas familias que el plan de negocio, que es donde vive este tablero:
+// Montserrat para el texto y los títulos, Geist Mono para las cifras.
+export const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-display',
+  variable: '--font-montserrat',
   display: 'swap',
 })
 
-export const geistSans = GeistSans // expone .variable = '--font-geist-sans'
 export const geistMono = GeistMono // expone .variable = '--font-geist-mono'

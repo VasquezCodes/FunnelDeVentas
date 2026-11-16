@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
-import { CaretDownIcon, CaretUpIcon, CheckIcon } from "@phosphor-icons/react/ssr"
+import { ChevronDown, ChevronUp, Check } from "lucide-react"
 
 const Select = SelectPrimitive.Root
 
@@ -48,7 +48,7 @@ function SelectTrigger({
       {children}
       <SelectPrimitive.Icon
         render={
-          <CaretDownIcon weight="bold" className="pointer-events-none size-3.5 text-muted-foreground" />
+          <ChevronDown strokeWidth={2} className="pointer-events-none size-3.5 text-muted-foreground" />
         }
       />
     </SelectPrimitive.Trigger>
@@ -134,7 +134,7 @@ function SelectItem({
             pinta `color` en cada <path>, y como el relleno es `currentColor`
             —que se resuelve en cada elemento— el visto se volvía tinta justo
             cuando se mira. */}
-        <CheckIcon weight="bold" color="var(--brand)" className="pointer-events-none" />
+        <Check strokeWidth={2} color="var(--brand)" className="pointer-events-none size-4" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   )
@@ -166,7 +166,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <CaretUpIcon weight="bold" />
+      <ChevronUp strokeWidth={2} />
     </SelectPrimitive.ScrollUpArrow>
   )
 }
@@ -184,7 +184,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <CaretDownIcon weight="bold" />
+      <ChevronDown strokeWidth={2} />
     </SelectPrimitive.ScrollDownArrow>
   )
 }

@@ -18,13 +18,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import {
-  ChartLineIcon,
-  CoinsIcon,
-  FunnelIcon,
-  MagnetIcon,
-  WarningIcon,
-} from '@phosphor-icons/react/ssr'
+import { ChartLine, Coins, Funnel, Magnet, TriangleAlert } from 'lucide-react'
 
 import type { Indicador, Meta, Periodo, Real, TasaDelPlan, TipoPeriodo } from '@/lib/tipos'
 import { compararTodos } from '@/lib/comparacion'
@@ -367,7 +361,7 @@ export function Tablero({
     {
       id: 'embudo',
       clave: 'Embudo',
-      icono: FunnelIcon,
+      icono: Funnel,
       titulo: 'Comparativa mes a mes',
       avisa: embudoAvisa,
       contenido: (
@@ -382,7 +376,7 @@ export function Tablero({
     {
       id: 'canales',
       clave: 'Canales',
-      icono: MagnetIcon,
+      icono: Magnet,
       titulo: 'Procedencia y coste de captación',
       // Sin subtítulo se pierde la frase que decía QUÉ canal se ha encarecido.
       // El punto del raíl sigue avisando de que hay algo que mirar, y el
@@ -393,7 +387,7 @@ export function Tablero({
     {
       id: 'dinero',
       clave: 'Ingresos',
-      icono: CoinsIcon,
+      icono: Coins,
       titulo: 'Ventas e ingresos recurrentes',
       avisa: dineroAvisa,
       contenido: <Dinero serie={serieDelTipo} periodoId={periodo.id} />,
@@ -401,7 +395,7 @@ export function Tablero({
     {
       id: 'serie',
       clave: 'Histórico',
-      icono: ChartLineIcon,
+      icono: ChartLine,
       titulo: 'Si es un mal mes o una tendencia',
       contenido: (
         <Tendencias
@@ -444,7 +438,7 @@ function AvisoIncidencias({ incidencias }: { incidencias: string[] }) {
       style={{ color: 'var(--estado-alerta)' }}
     >
       {/* Ámbar y no carmín: es un aviso, y los avisos llevan su estado. */}
-      <WarningIcon weight="duotone" aria-hidden="true" className="mt-[0.1rem] size-4 shrink-0" />
+      <TriangleAlert strokeWidth={1.5} aria-hidden="true" className="mt-[0.1rem] size-4 shrink-0" />
       <span>
         {incidencias.length} filas del catálogo no se encontraron en el Excel (
         {incidencias.slice(0, 4).join(', ')}
@@ -464,7 +458,7 @@ function AvisoReales({ motivo }: { motivo: string }) {
       className="flex items-start gap-2 text-xs leading-relaxed"
       style={{ color: 'var(--estado-alerta)' }}
     >
-      <WarningIcon weight="duotone" aria-hidden="true" className="mt-[0.1rem] size-4 shrink-0" />
+      <TriangleAlert strokeWidth={1.5} aria-hidden="true" className="mt-[0.1rem] size-4 shrink-0" />
       <span>
         No se pudieron leer los resultados guardados ({motivo}). El tablero enseña el plan sin
         reales.

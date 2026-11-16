@@ -23,7 +23,7 @@
  */
 
 import { useEffect, useId, useRef } from 'react'
-import { WarningIcon } from '@phosphor-icons/react/ssr'
+import { TriangleAlert } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -77,7 +77,7 @@ export function DialogoConfirmar({
       onClick={(evento) => {
         if (evento.target === evento.currentTarget) onCancelar()
       }}
-      className="aparecer m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
+      className="aparecer m-auto w-[min(26rem,calc(100vw-2rem))] cuenco-l border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
       style={{ borderColor: 'var(--border)' }}
     >
       <div className="p-6">
@@ -85,8 +85,8 @@ export function DialogoConfirmar({
           id={`${id}-titulo`}
           className="font-display flex items-center gap-2 text-xl leading-tight font-semibold"
         >
-          <WarningIcon
-            weight="duotone"
+          <TriangleAlert
+            strokeWidth={1.5}
             aria-hidden="true"
             className="size-5 shrink-0"
             style={{ color: tono === 'peligro' ? 'var(--estado-critico)' : 'var(--brand)' }}
@@ -101,7 +101,7 @@ export function DialogoConfirmar({
           <button
             type="button"
             onClick={onCancelar}
-            className="h-10 rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="h-10 cuenco-m px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {cancelar}
           </button>
@@ -110,7 +110,7 @@ export function DialogoConfirmar({
             type="button"
             onClick={onConfirmar}
             className={cn(
-              'h-10 rounded-full px-5 text-sm font-medium text-white transition-opacity hover:opacity-90',
+              'h-10 cuenco-m px-5 text-sm font-medium text-white transition-opacity hover:opacity-90',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
             )}
             style={{

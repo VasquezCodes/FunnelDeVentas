@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useId, useRef } from 'react'
-import { LockKeyIcon, WarningIcon } from '@phosphor-icons/react/ssr'
+import { LockKeyhole, TriangleAlert } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 
@@ -75,7 +75,7 @@ export function DialogoClave({
         evento.preventDefault()
         if (!guardando) onCancelar()
       }}
-      className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
+      className="m-auto w-[min(26rem,calc(100vw-2rem))] cuenco-l border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
       style={{ borderColor: 'var(--border)' }}
     >
       <form
@@ -90,7 +90,7 @@ export function DialogoClave({
           id={`${id}-titulo`}
           className="font-display flex items-center gap-2 text-xl leading-tight font-semibold"
         >
-          <LockKeyIcon weight="duotone" aria-hidden="true" className="size-5 shrink-0 text-brand" />
+          <LockKeyhole strokeWidth={1.5} aria-hidden="true" className="size-5 shrink-0 text-brand" />
           {titulo}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -122,7 +122,7 @@ export function DialogoClave({
             className="mt-2 flex items-center gap-1.5 text-xs"
             style={{ color: 'var(--estado-critico)' }}
           >
-            <WarningIcon weight="duotone" aria-hidden="true" className="size-3.5 shrink-0" />
+            <TriangleAlert strokeWidth={1.5} aria-hidden="true" className="size-3.5 shrink-0" />
             {error}
           </p>
         )}
@@ -132,14 +132,14 @@ export function DialogoClave({
             type="button"
             onClick={onCancelar}
             disabled={guardando}
-            className="h-10 rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            className="h-10 cuenco-m px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={guardando}
-            className="h-10 rounded-full bg-brand px-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-colors hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+            className="h-10 cuenco-m bg-brand px-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-colors hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
           >
             {guardando ? accionEnCurso : accion}
           </button>

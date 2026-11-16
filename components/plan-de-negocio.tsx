@@ -15,7 +15,7 @@
 
 import { startTransition, useId, useState, useTransition } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
-import { WarningIcon } from '@phosphor-icons/react/ssr'
+import { TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cambiarPlan, type ResultadoCambioPlan } from '@/app/captura/acciones'
@@ -85,7 +85,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
   return (
     <div className="px-6 pt-5">
       <div
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl px-4 py-3"
+        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 cuenco-l px-4 py-3"
         style={{ backgroundColor: 'color-mix(in oklab, var(--foreground) 3%, transparent)' }}
       >
         <div className="flex min-w-0 items-center gap-3">
@@ -109,7 +109,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
             disabled={bloqueo !== null}
             title={bloqueo ?? undefined}
             onClick={() => setEditando(true)}
-            className="h-9 shrink-0 rounded-full border px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-9 shrink-0 cuenco-m border px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
             style={{ borderColor: 'var(--regla)' }}
           >
             Cambiar libro
@@ -124,7 +124,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
           // Sin la validación del navegador: su globo dice «introduce una
           // URL» y no por qué este enlace no vale. Lo dice `limpiarEnlace`.
           noValidate
-          className="mt-3 rounded-xl border px-4 py-4"
+          className="mt-3 cuenco-l border px-4 py-4"
           style={{ borderColor: 'var(--regla-fina)' }}
           onSubmit={(evento) => {
             evento.preventDefault()
@@ -162,7 +162,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
           </p>
           {error && (
             <p role="alert" className="mt-2 flex items-start gap-1.5 text-xs" style={{ color: 'var(--estado-critico)' }}>
-              <WarningIcon weight="duotone" aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+              <TriangleAlert strokeWidth={1.5} aria-hidden="true" className="mt-px size-3.5 shrink-0" />
               <span>{error}</span>
             </p>
           )}
@@ -170,7 +170,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
             <button
               type="button"
               onClick={cerrar}
-              className="h-10 rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="h-10 cuenco-m px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Cancelar
             </button>
@@ -178,7 +178,7 @@ export function PlanDeNegocio({ libro, modificadoEn, bloqueo }: PlanDeNegocioPro
               type="submit"
               disabled={enlace.trim() === ''}
               className={cn(
-                'h-10 rounded-full bg-brand px-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-colors hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50',
+                'h-10 cuenco-m bg-brand px-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-colors hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50',
                 'disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >

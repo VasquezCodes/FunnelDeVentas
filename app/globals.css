@@ -39,13 +39,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
 
   /* Tokens propios expuestos a Tailwind */
   --color-brand: var(--brand);
@@ -79,7 +79,7 @@
    una barra carmín es «marca», nunca «crítico».
    ══════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #faf7f5; /* papel cálido */
+  --background: #f1f1ef; /* papel, el del plan de negocio */
   --foreground: #1d1d1b; /* tinta */
   --card: #ffffff;
   --card-foreground: #1d1d1b;
@@ -87,17 +87,20 @@
   --popover-foreground: #1d1d1b;
   --primary: #bd0842; /* carmín — acción de marca */
   --primary-foreground: #ffffff;
-  --secondary: #f4efec;
+  --secondary: #e8e7e3;
   --secondary-foreground: #1d1d1b;
-  --muted: #f4efec;
-  --muted-foreground: #7a716b;
-  --accent: #f4efec; /* hover neutro de shadcn, no es el acento de marca */
+  --muted: #e8e7e3;
+  --muted-foreground: #5e5d58;
+  --accent: #e8e7e3; /* hover neutro de shadcn, no es el acento de marca */
   --accent-foreground: #1d1d1b;
-  --destructive: #a0073a;
-  --border: #e3dcd8;
-  --input: #e3dcd8;
+  --destructive: #9a0636;
+  --border: #e3e2dd;
+  --input: #8c8b85; /* contorno de campos, 3:1 sobre la tarjeta */
   --ring: #bd0842;
-  --radius: 0.625rem;
+  --radius: 0.1875rem; /* casi recto: el arco lo ponen las utilidades cuenco-* */
+  --cuenco-l: 1.5rem; /* tarjetas y diálogos */
+  --cuenco-m: 0.75rem; /* botones */
+  --cuenco-s: 0.5rem; /* campos y selectores */
 
   /* ── Filetes ─────────────────────────────────────────────────────
      El tablero es una hoja reglada: el filete no es decoración, es lo
@@ -106,14 +109,14 @@
      Dos pesos, porque son dos cosas distintas:
        regla      1,69:1  separa secciones
        regla-fina 1,36:1  separa renglones dentro de una sección */
-  --regla: #cdc6c1;
-  --regla-fina: #e3dcd8;
+  --regla: #cfcec9;
+  --regla-fina: #e3e2dd;
 
   /* Marca */
   --brand: #bd0842;
-  --brand-strong: #a0073a;
+  --brand-strong: #9a0636;
   --wine: #54123d;
-  --muted-surface: #f4efec;
+  --muted-surface: #e8e7e3;
 
   /* ── Series de datos (identidad: plan vs. real) ──────────────────
      Neutras a propósito. El plan es la referencia y se retira; el
@@ -126,36 +129,36 @@
      herramienta: si no se ve el plan, no hay nada que comparar.
      Ahora mide 2,68:1: sigue retirándose frente a la tinta (16,9:1),
      pero se ve. */
-  --serie-plan: #a79c95;
+  --serie-plan: #a19f99;
   --serie-real: #1d1d1b;
-  --serie-plan-suave: #cfc7c1;
+  --serie-plan-suave: #cfcec9;
 
   /* ── Estado / semáforo (reservados) ──────────────────────────────
      Mismos valores que el resto del ecosistema, para que quien ya
      usa las herramientas internas los lea igual sin reaprender. */
-  --estado-ok: #157f5b;
-  --estado-alerta: #b5760a;
-  --estado-critico: #a0073a;
-  --estado-neutro: #9a938d;
-  --estado-ok-suave: #e6f2ec;
+  --estado-ok: #1d6b4f;
+  --estado-alerta: #8a5a08;
+  --estado-critico: #9a0636;
+  --estado-neutro: #9a9993;
+  --estado-ok-suave: #e5f0eb;
   /* El plan cumplido entero: «más verde» que «en plan». Lo usa el anillo
      del Dinero en su tramo final (lib/color-cumplimiento.ts). */
   --estado-ok-fuerte: #0b6343;
   /* Lo que pasa del plan: la segunda vuelta del anillo del Dinero. Un
      violeta que acompaña al verde sin confundirse con ningún estado. */
   --sobre-plan: #8a4fbf;
-  --estado-alerta-suave: #fbf1de;
-  --estado-critico-suave: #f9e7ec;
+  --estado-alerta-suave: #f6edd9;
+  --estado-critico-suave: #fbe9ef;
 
   /* Gráficas: escala neutra, del claro al oscuro.
      Un solo tono cálido (h≈56 en OKLCH, 5° de dispersión) con saltos de
      luminosidad regulares. El extremo claro se bajó de #cabfb8 a #b9afa8
      para que despegue del papel: a 2,02:1 se ve, a 1,69:1 no se veía. */
   --chart-1: #1d1d1b;
-  --chart-2: #55504c;
-  --chart-3: #7a716b;
-  --chart-4: #a0968f;
-  --chart-5: #b9afa8;
+  --chart-2: #53524e;
+  --chart-3: #75746e;
+  --chart-4: #9b9a94;
+  --chart-5: #b5b4ae;
 
   /* ── Canales de captación ────────────────────────────────────────
      ── De tres tonos de vino a siete colores ─────────────────────────
@@ -231,21 +234,22 @@
   --metrica-azul: #2a78d6;
 
   /* Superficies del chasis */
-  --sidebar: #f4efec;
+  --sidebar: #e8e7e3;
   --sidebar-foreground: #1d1d1b;
   --sidebar-primary: #bd0842;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ece4df;
+  --sidebar-accent: #e8e7e3;
   --sidebar-accent-foreground: #1d1d1b;
-  --sidebar-border: #e4dcd7;
+  --sidebar-border: #e3e2dd;
   --sidebar-ring: #bd0842;
 
   /* Rejilla y ejes: deben retirarse, no competir */
-  --grid-line: #ddd6d1;
+  --grid-line: #dcdbd6;
 
   /* Tipografía */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), Georgia, serif;
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  /* Los títulos van en Montserrat como en el plan; font-display queda como alias para no tocar cada título. */
+  --font-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Movimiento — nunca linear ni ease-in-out */
@@ -383,16 +387,24 @@
        `clip` y no `hidden`: hidden convertiría el <html> en un contenedor de
        scroll y rompería el `position: sticky` de la barra superior. */
     overflow-x: clip;
+    /* Lo que dibuja el navegador también es de la casa, como en el plan. */
+    caret-color: var(--primary);
+    scrollbar-color: var(--input) transparent;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
   /* Todo en rem: al escalar la raíz crece la interfaz entera de forma
-     uniforme en monitores grandes. Móvil sin cambios. */
+     uniforme en monitores grandes. Móvil sin cambios. Dentro del plan no se
+     escala, para que el texto mida lo mismo que el de alrededor. */
   @media (min-width: 1024px) {
-    html {
+    html:not([data-embebido]) {
       font-size: 108%;
     }
   }
   @media (min-width: 1536px) {
-    html {
+    html:not([data-embebido]) {
       font-size: 114%;
     }
   }
@@ -405,13 +417,13 @@
   .bandeja {
     background: color-mix(in oklab, var(--foreground) 4%, transparent);
     border: 1px solid color-mix(in oklab, var(--foreground) 7%, transparent);
-    border-radius: 1.25rem;
+    border-radius: var(--radius) var(--cuenco-l) var(--radius) var(--radius);
     padding: 0.3125rem;
     box-shadow: var(--sombra-tray);
   }
   .nucleo {
     background: var(--card);
-    border-radius: calc(1.25rem - 0.3125rem);
+    border-radius: var(--radius) calc(var(--cuenco-l) - 0.3125rem) var(--radius) var(--radius);
     box-shadow: inset 0 1px 0 color-mix(in oklab, white 55%, transparent);
     height: 100%;
   }
@@ -491,6 +503,22 @@
     opacity: 0.028;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+  /* El papel del plan es liso. */
+  [data-embebido] .grano::after {
+    display: none;
+  }
+}
+
+/* Esquinas de la casa (las del plan de negocio): casi rectas salvo la superior
+   derecha, que es un arco como el cuenco de la B. */
+@utility cuenco-l {
+  border-radius: var(--radius) var(--cuenco-l) var(--radius) var(--radius);
+}
+@utility cuenco-m {
+  border-radius: var(--radius) var(--cuenco-m) var(--radius) var(--radius);
+}
+@utility cuenco-s {
+  border-radius: var(--radius) var(--cuenco-s) var(--radius) var(--radius);
 }
 
 @keyframes aparecer {

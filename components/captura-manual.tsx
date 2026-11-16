@@ -50,7 +50,7 @@ import {
   useTransition,
   type ReactNode,
 } from 'react'
-import { ArrowsClockwiseIcon, CaretDownIcon, CheckIcon, WarningIcon } from '@phosphor-icons/react/ssr'
+import { ChevronDown, Check, TriangleAlert } from 'lucide-react'
 import {
   BadgeCheck,
   Banknote,
@@ -893,8 +893,8 @@ export function CapturaManual({
         >
           <span className="flex min-w-0 items-center gap-2">
             {titulo(bloque, idTitulo, `${capturados} de ${filas.length}`)}
-            <CaretDownIcon
-              weight="bold"
+            <ChevronDown
+              strokeWidth={2}
               aria-hidden="true"
               className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-open/plegado:rotate-180"
             />
@@ -1033,10 +1033,10 @@ export function CapturaManual({
               <NombreTasa texto={total.nombre} fuerte>
                 {/* Un botón que se ve botón: en carmín, con la flecha que
                     gira al abrirse. */}
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_oklab,var(--brand)_10%,transparent)] py-0.5 pr-1.5 pl-2 text-xs font-medium text-brand transition-colors duration-150 group-hover/tasa:bg-[color-mix(in_oklab,var(--brand)_16%,transparent)]">
+                <span className="flex shrink-0 items-center gap-1 rounded-sm bg-[color-mix(in_oklab,var(--brand)_10%,transparent)] py-0.5 pr-1.5 pl-2 text-xs font-medium text-brand transition-colors duration-150 group-hover/tasa:bg-[color-mix(in_oklab,var(--brand)_16%,transparent)]">
                   Por canal
-                  <CaretDownIcon
-                    weight="bold"
+                  <ChevronDown
+                    strokeWidth={2}
                     aria-hidden="true"
                     className="size-3 transition-transform duration-200 group-open/tasa:rotate-180"
                   />
@@ -1147,7 +1147,7 @@ export function CapturaManual({
           {/* ── Cabecera ─────────────────────────────────────────────── */}
           <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-6 pt-6">
             <div>
-              <h2 className="font-display text-3xl leading-none tracking-tight text-foreground">
+              <h2 className="font-display text-3xl leading-none font-bold tracking-tight text-foreground">
                 {mes.etiqueta}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">Escribe lo que pasó en cada quincena.</p>
@@ -1168,7 +1168,7 @@ export function CapturaManual({
                 </>
               ) : (
                 <>
-                  <CheckIcon weight="bold" aria-hidden="true" className="size-3.5 text-estado-ok" />
+                  <Check strokeWidth={2} aria-hidden="true" className="size-3.5 text-estado-ok" />
                   Todo guardado
                 </>
               )}
@@ -1244,13 +1244,13 @@ export function CapturaManual({
             <div className="max-w-md space-y-1.5">
               {bloqueo && (
                 <p role="status" className="flex items-start gap-2 text-xs text-estado-alerta">
-                  <WarningIcon weight="duotone" aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                  <TriangleAlert strokeWidth={1.5} aria-hidden="true" className="mt-px size-3.5 shrink-0" />
                   <span>{bloqueo}</span>
                 </p>
               )}
               <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                <ArrowsClockwiseIcon
-                  weight="duotone"
+                <RefreshCw
+                  strokeWidth={1.5}
                   aria-hidden="true"
                   className="mt-px size-3.5 shrink-0 text-brand"
                 />
@@ -1265,14 +1265,14 @@ export function CapturaManual({
                 setErrorClave(null)
                 setPidiendoClave(true)
               }}
-              className="group/guardar relative inline-flex h-11 shrink-0 items-center rounded-full bg-brand pr-12 pl-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-[transform,background-color,opacity] duration-300 ease-(--ease-fluid) outline-none hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="group/guardar relative inline-flex h-11 shrink-0 items-center cuenco-m bg-brand pr-12 pl-5 text-sm font-medium text-primary-foreground shadow-(--sombra-tray) transition-[transform,background-color,opacity] duration-300 ease-(--ease-fluid) outline-none hover:bg-brand-strong focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Guardar cambios
               <span
                 aria-hidden="true"
-                className="absolute right-2 grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/15 transition-transform duration-300 ease-(--ease-fluid) group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
+                className="absolute right-2 grid h-7 w-7 place-items-center cuenco-s bg-primary-foreground/15 transition-transform duration-300 ease-(--ease-fluid) group-hover/guardar:translate-x-0.5 group-hover/guardar:-translate-y-0.5 group-hover/guardar:scale-105"
               >
-                <CheckIcon weight="bold" className="size-3.5" />
+                <Check strokeWidth={2} className="size-3.5" />
               </span>
             </button>
           </footer>
@@ -1314,7 +1314,7 @@ function ConmutadorAgrupacion({
     <div
       role="group"
       aria-label="Agrupar las casillas"
-      className="flex w-fit items-center gap-0.5 rounded-full p-1"
+      className="flex w-fit items-center gap-0.5 rounded-md p-[3px]"
       style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
     >
       {opciones.map((opcion) => {
@@ -1326,11 +1326,11 @@ function ConmutadorAgrupacion({
             aria-pressed={activa}
             onClick={() => onCambiar(opcion.id)}
             className={cn(
-              'h-7 rounded-full px-3.5 text-[0.8125rem] font-medium',
+              'h-7 rounded-md px-3.5 text-[0.8125rem] font-medium',
               'transition-[background-color,color,box-shadow] duration-200',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               activa
-                ? 'bg-background text-foreground shadow-(--sombra-tray)'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
             style={{ transitionTimingFunction: 'var(--ease-fluid)' }}

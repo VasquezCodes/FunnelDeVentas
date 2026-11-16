@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { CalendarDotsIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react/ssr'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import type { Periodo, TipoPeriodo } from '@/lib/tipos'
 import { MESES_CORTOS, capitalizar } from '@/lib/periodos'
@@ -65,7 +65,7 @@ export function SelectorPeriodo({
           En móvil se estira para llenar la fila en vez de imponer su ancho:
           con ancho fijo, la fila medía 498 px en una pantalla de 400. */}
       <div
-        className="flex min-w-0 flex-1 items-center gap-0.5 rounded-full border p-[3px] sm:flex-initial"
+        className="flex min-w-0 flex-1 items-center gap-0.5 cuenco-s border bg-card p-[3px] sm:flex-initial"
         style={{ borderColor: 'var(--border)' }}
       >
         <Paso
@@ -73,7 +73,7 @@ export function SelectorPeriodo({
           onClick={() => haciaAtras && onCambiar(haciaAtras.id)}
           desactivado={!haciaAtras}
         >
-          <CaretLeftIcon weight="bold" aria-hidden="true" className="size-3.5" />
+          <ChevronLeft strokeWidth={2} aria-hidden="true" className="size-3.5" />
         </Paso>
 
         <Rejilla
@@ -88,7 +88,7 @@ export function SelectorPeriodo({
           onClick={() => haciaDelante && onCambiar(haciaDelante.id)}
           desactivado={!haciaDelante}
         >
-          <CaretRightIcon weight="bold" aria-hidden="true" className="size-3.5" />
+          <ChevronRight strokeWidth={2} aria-hidden="true" className="size-3.5" />
         </Paso>
       </div>
     </div>
@@ -161,7 +161,7 @@ function Rejilla({
         aria-haspopup="dialog"
         aria-expanded={abierto}
         className={cn(
-          'flex h-7 w-full items-center justify-center gap-2 rounded-full px-3 text-[0.8125rem] font-medium sm:w-44',
+          'flex h-7 w-full items-center justify-center gap-2 rounded-md px-3 text-[0.8125rem] font-medium sm:w-44',
           'transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)]',
           'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring',
           abierto && 'bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)]',
@@ -169,8 +169,8 @@ function Rejilla({
       >
         {/* Sin el icono, el nombre del mes no parece pulsable: nada dice que
             abre la rejilla. Va en carmín porque es un control, no un dato. */}
-        <CalendarDotsIcon
-          weight="duotone"
+        <CalendarDays
+          strokeWidth={1.5}
           aria-hidden="true"
           className="size-4 shrink-0 text-brand"
         />
@@ -181,7 +181,7 @@ function Rejilla({
         <div
           role="dialog"
           aria-label="Elegir periodo"
-          className="absolute top-[calc(100%+0.75rem)] left-1/2 z-50 w-[17.5rem] -translate-x-1/2 rounded-xl border p-3"
+          className="absolute top-[calc(100%+0.75rem)] left-1/2 z-50 w-[17.5rem] -translate-x-1/2 cuenco-l border p-3"
           style={{
             background: 'var(--popover)',
             borderColor: 'var(--regla)',
@@ -195,7 +195,7 @@ function Rejilla({
               onClick={() => setAnio((a) => Math.max(primerAnio, a - 1))}
               desactivado={anio <= primerAnio}
             >
-              <CaretLeftIcon weight="bold" aria-hidden="true" className="size-3.5" />
+              <ChevronLeft strokeWidth={2} aria-hidden="true" className="size-3.5" />
             </FlechaAnio>
             <span className="cifra text-sm font-medium tabular-nums">{anio}</span>
             <FlechaAnio
@@ -203,7 +203,7 @@ function Rejilla({
               onClick={() => setAnio((a) => Math.min(ultimoAnio, a + 1))}
               desactivado={anio >= ultimoAnio}
             >
-              <CaretRightIcon weight="bold" aria-hidden="true" className="size-3.5" />
+              <ChevronRight strokeWidth={2} aria-hidden="true" className="size-3.5" />
             </FlechaAnio>
           </div>
 
@@ -287,9 +287,9 @@ const TIPOS: Array<{ id: TipoPeriodo; etiqueta: string }> = [
 ]
 
 /**
- * Mismo dibujo que el conmutador de vistas de la barra —bandeja y píldoras—
- * pero el activo va en papel y no en carmín: el carmín ya dice en qué modo
- * estás, y dos manchas de marca juntas competirían por decir «aquí».
+ * Mismo dibujo que el conmutador de vistas de la barra y que las pestañas del
+ * plan de negocio: el activo va en blanco sobre el hundido. Sin carmín: el
+ * carmín de la barra ya dice en qué modo estás.
  */
 function ConmutadorTipo({
   tipo,
@@ -302,8 +302,7 @@ function ConmutadorTipo({
     <div
       role="group"
       aria-label="Grano del periodo"
-      className="flex items-center gap-0.5 rounded-full p-1"
-      style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
+      className="flex items-center gap-0.5 rounded-md bg-muted p-[3px]"
     >
       {TIPOS.map((t) => {
         const activo = t.id === tipo
@@ -314,11 +313,11 @@ function ConmutadorTipo({
             aria-pressed={activo}
             onClick={() => onCambiar(t.id)}
             className={cn(
-              'h-7 rounded-full px-3.5 text-[0.8125rem] font-medium',
+              'h-7 rounded-md px-3.5 text-[0.8125rem] font-medium',
               'transition-[background-color,color,box-shadow] duration-200',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               activo
-                ? 'bg-background text-foreground shadow-[var(--sombra-tray)]'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
             style={{ transitionTimingFunction: 'var(--ease-fluid)' }}
@@ -349,7 +348,7 @@ function Paso({
       disabled={desactivado}
       aria-label={etiqueta}
       className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground',
+        'flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
         'transition-[color,background-color] duration-200',
         'hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-foreground',
         'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring',

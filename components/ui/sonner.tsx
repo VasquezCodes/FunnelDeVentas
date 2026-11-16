@@ -2,13 +2,7 @@
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import {
-  CheckCircleIcon,
-  CircleNotchIcon,
-  InfoIcon,
-  WarningIcon,
-  WarningOctagonIcon,
-} from "@phosphor-icons/react/ssr"
+import { CircleCheck, LoaderCircle, Info, TriangleAlert, OctagonAlert } from "lucide-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
@@ -19,19 +13,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={{
         success: (
-          <CheckCircleIcon weight="duotone" className="size-4" />
+          <CircleCheck strokeWidth={1.5} className="size-4" />
         ),
         info: (
-          <InfoIcon weight="duotone" className="size-4" />
+          <Info strokeWidth={1.5} className="size-4" />
         ),
         warning: (
-          <WarningIcon weight="duotone" className="size-4" />
+          <TriangleAlert strokeWidth={1.5} className="size-4" />
         ),
         error: (
-          <WarningOctagonIcon weight="duotone" className="size-4" />
+          <OctagonAlert strokeWidth={1.5} className="size-4" />
         ),
         loading: (
-          <CircleNotchIcon weight="bold" className="size-4 animate-spin" />
+          <LoaderCircle strokeWidth={2} className="size-4 animate-spin" />
         ),
       }}
       style={

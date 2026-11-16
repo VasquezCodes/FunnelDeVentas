@@ -19,7 +19,7 @@
  * pero es él quien cruza la frontera, no la tarjeta entera.
  */
 
-import { InfoIcon } from '@phosphor-icons/react/ssr'
+import { Info } from 'lucide-react'
 import { cn } from 'cn'
 
 import { Semaforo, varEstado } from '@/components/semaforo'
@@ -104,8 +104,8 @@ export function TarjetaKpi({ c, destacada = false, className }: TarjetaKpiProps)
                   className="eyebrow group/def transicion-fluida inline-flex items-center gap-1 rounded-sm text-left transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <span>{nombre}</span>
-                  <InfoIcon
-                    weight="duotone"
+                  <Info
+                    strokeWidth={1.5}
                     className="size-3 shrink-0 opacity-45 transition-opacity group-hover/def:opacity-90"
                     aria-hidden="true"
                   />
@@ -131,18 +131,10 @@ export function TarjetaKpi({ c, destacada = false, className }: TarjetaKpiProps)
         <div>
           <p
             className={cn(
-              'cifra font-display leading-none tracking-tight',
+              'cifra leading-none font-medium tracking-tight',
               destacada ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl',
               real === null && 'text-muted-foreground',
             )}
-            // .cifra y .font-display están en la misma capa de utilidades y
-            // ambas fijan font-family; como .cifra se declara después, gana
-            // ella. El estilo en línea devuelve la serif de display sin
-            // perder los tabular-nums de .cifra (que viven en
-            // font-variant-numeric, no en la familia). Si algún día se
-            // reordena globals.css poniendo .font-display al final, esta
-            // línea sobra.
-            style={{ fontFamily: 'var(--font-display)' }}
           >
             {formatearValor(real, indicador.unidad)}
           </p>

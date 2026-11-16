@@ -54,7 +54,7 @@
 
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { CalendarCheck, Coins, HandCoins, Repeat, UserPlus, type LucideIcon } from 'lucide-react'
-import { CoinsIcon } from '@phosphor-icons/react/ssr'
+
 
 import {
   HojaVacia,
@@ -318,7 +318,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
   if (!hayCifras) {
     return (
       <HojaVacia
-        Icono={CoinsIcon}
+        Icono={Coins}
         titulo="Todavía no hay ingreso que contar"
         motivo={
           piezas.length === 0
@@ -358,7 +358,7 @@ export function Dinero({ serie, periodoId }: DineroProps) {
                 data-valor={lecturaTotal.valor ?? undefined}
                 data-final={lecturaTotal.cifra}
                 className={cn(
-                  'font-display mt-1.5 text-[2rem] font-normal tracking-[-0.02em] proportional-nums',
+                  'cifra mt-1.5 text-[2rem] font-medium tracking-[-0.02em]',
                   'leading-none',
                   lecturaTotal.apagada ? 'text-muted-foreground' : 'text-foreground',
                 )}
@@ -737,7 +737,7 @@ function LibroCuentas({
                 data-cuenta="dinero"
                 data-valor={realTotal ?? undefined}
                 data-final={importe(realTotal)}
-                className="font-display text-[1.25rem] leading-none font-normal tracking-[-0.01em] text-foreground"
+                className="cifra text-[1.25rem] leading-none font-medium tracking-[-0.01em] text-foreground"
               >
                 {importe(realTotal)}
               </span>

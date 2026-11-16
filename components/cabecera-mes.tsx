@@ -5,8 +5,8 @@
  * sus cuatro cifras generales.
  *
  * ── Dos pisos, dos preguntas ─────────────────────────────────────────────
- * Arriba, qué es esto: «Funnel de ventas», en la serif de la casa y en el
- * cuerpo mayor de la página, con su entradilla y firmado por la raya de
+ * Arriba, qué es esto: «Funnel de ventas», en Montserrat, como los títulos del
+ * plan de negocio, y en el cuerpo mayor de la página, con su entradilla y firmado por la raya de
  * marca. Es lo que no cambia.
  *
  * Abajo, cómo va el mes, en una fila de libro de cuentas. El mes encabeza la
@@ -213,7 +213,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
       {/* ── El título ─────────────────────────────────────────────────── */}
       <h1
         data-titulo
-        className="font-display text-[clamp(2.25rem,1.2rem+3.4vw,3.5rem)] leading-none font-semibold tracking-[-0.03em]"
+        className="font-display text-[clamp(2.25rem,1.2rem+3.4vw,3.5rem)] leading-none font-bold tracking-[-0.03em]"
       >
         Funnel de ventas
       </h1>
@@ -274,7 +274,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
               <span
                 key={periodo.id}
                 data-mes
-                className="font-display block text-[clamp(1.625rem,1.1rem+2.2vw,2.625rem)] leading-[0.92] font-semibold tracking-tight"
+                className="font-display block text-[clamp(1.625rem,1.1rem+2.2vw,2.625rem)] leading-[0.92] font-bold tracking-tight"
                 // SplitText avisa: `text-wrap: balance` interfiere con el
                 // reparto en líneas, así que aquí se desactiva.
                 style={{ textWrap: 'nowrap', fontKerning: 'none' }}
@@ -318,7 +318,7 @@ export function CabeceraMes({ periodo, comparativas }: CabeceraMesProps) {
                 // El cuerpo sigue al ancho de la cabecera (cqi), no al de la
                 // ventana: con el panel del mes al lado, «101.082 €» tiene que
                 // caber en su columna. Nunca se parte.
-                className="font-display mt-2 self-end text-[clamp(1.375rem,2.2cqi,2rem)] leading-none font-semibold whitespace-nowrap tabular-nums"
+                className="cifra mt-2 self-end text-[clamp(1.375rem,2.2cqi,2rem)] leading-none font-medium whitespace-nowrap"
                 style={{
                   color: cifra.lectura.apagada
                     ? 'var(--muted-foreground)'

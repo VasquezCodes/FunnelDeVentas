@@ -66,9 +66,6 @@ export function Veredicto({ lectura, periodo }: VeredictoProps) {
               <p
                 className="cifra leading-none font-semibold tracking-tighter tabular-nums"
                 style={{
-                  // .cifra fija la mono; la display se devuelve en línea sin
-                  // perder los tabular-nums, que viven en otra propiedad.
-                  fontFamily: 'var(--font-display)',
                   fontSize: 'clamp(3rem, 8vw, 4.5rem)',
                 }}
               >

@@ -13,7 +13,7 @@
  * no se puede leer el plan, se dice cuál es el fallo y cómo se arregla.
  */
 
-import { FolderSimpleDashedIcon, KeyIcon, WarningIcon } from '@phosphor-icons/react/ssr'
+import { FolderSearch, KeyRound, TriangleAlert } from 'lucide-react'
 import { connection } from 'next/server'
 
 import type { Meta, Real } from '@/lib/tipos'
@@ -132,8 +132,8 @@ function NoSePudoLeerElPlan({ mensaje }: { mensaje: string }) {
       <div className="bandeja">
         <div className="nucleo p-7">
           <div className="flex items-start gap-3">
-            <WarningIcon
-              weight="duotone"
+            <TriangleAlert
+              strokeWidth={1.5}
               className="mt-0.5 size-5 shrink-0"
               style={{ color: 'var(--estado-alerta)' }}
               aria-hidden="true"
@@ -162,8 +162,8 @@ function NoSePudoLeerElPlan({ mensaje }: { mensaje: string }) {
                     otro aviso: el aviso ya lo da el triángulo de arriba. */}
                 <ul className="space-y-2.5 text-sm leading-relaxed text-muted-foreground">
                   <li className="flex items-start gap-2.5">
-                    <FolderSimpleDashedIcon
-                      weight="duotone"
+                    <FolderSearch
+                      strokeWidth={1.5}
                       aria-hidden="true"
                       className="mt-[0.2rem] size-4 shrink-0 text-brand"
                     />
@@ -175,8 +175,8 @@ function NoSePudoLeerElPlan({ mensaje }: { mensaje: string }) {
                     </span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <KeyIcon
-                      weight="duotone"
+                    <KeyRound
+                      strokeWidth={1.5}
                       aria-hidden="true"
                       className="mt-[0.2rem] size-4 shrink-0 text-brand"
                     />

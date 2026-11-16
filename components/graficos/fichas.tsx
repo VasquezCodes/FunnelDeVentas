@@ -46,8 +46,7 @@ import {
   type KeyboardEvent as EventoTecladoReact,
   type PointerEvent as EventoPunteroReact,
 } from 'react'
-import type { Icon } from '@phosphor-icons/react'
-import { ArrowsOutSimpleIcon } from '@phosphor-icons/react/ssr'
+import { Maximize2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, Line, ReferenceLine, XAxis, YAxis } from 'recharts'
 
@@ -597,8 +596,8 @@ export function CeldaFicha({
           {/* Que se puede abrir se dice al pasar: fija, la flecha sería
               ruido repetido en seis fichas. */}
           {onAbrir && (
-            <ArrowsOutSimpleIcon
-              weight="bold"
+            <Maximize2
+              strokeWidth={2}
               aria-hidden="true"
               className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover/ficha:opacity-100 group-focus-visible/ficha:opacity-100"
             />
@@ -610,14 +609,12 @@ export function CeldaFicha({
         />
       </div>
 
-      {/* La cifra, en la serif del mes de la cabecera: la misma voz para
-          todo lo que es «el número». Cifras proporcionales: a este tamaño,
-          las tabulares dejan el «1» nadando. La `key` separa el nodo que
+      {/* La cifra, en Geist Mono como toda cifra del plan de negocio. La `key` separa el nodo que
           cuenta en la entrada del que enseña un mes señalado: si fueran el
           mismo, una cuenta a medias escribiría encima del mes señalado. */}
       <p
         className={cn(
-          'font-display mt-4 leading-none font-normal tracking-[-0.02em] proportional-nums',
+          'cifra mt-4 leading-none font-medium tracking-[-0.02em]',
           grande ? 'text-[3.25rem]' : 'text-[2.5rem]',
           lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
         )}
@@ -1099,16 +1096,16 @@ export function HojaVacia({
   titulo,
   motivo,
 }: {
-  Icono: Icon
+  Icono: LucideIcon
   titulo: string
   motivo: string
 }) {
   return (
     <div
       data-slot="tarjeta-grafico"
-      className="relative flex flex-col items-center justify-center gap-2 rounded-[14px] border border-border bg-card px-4 py-12 text-center text-card-foreground"
+      className="relative flex flex-col items-center justify-center gap-2 cuenco-l border border-border bg-card px-4 py-12 text-center text-card-foreground"
     >
-      <Icono weight="duotone" className="size-7 text-muted-foreground" aria-hidden="true" />
+      <Icono strokeWidth={1.5} className="size-7 text-muted-foreground" aria-hidden="true" />
       <p className="text-sm font-medium">{titulo}</p>
       <p className="max-w-md text-xs leading-relaxed text-muted-foreground">{motivo}</p>
     </div>

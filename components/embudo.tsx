@@ -34,7 +34,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { FunnelIcon } from '@phosphor-icons/react/ssr'
+import { Funnel } from 'lucide-react'
 import {
   BadgeCheck,
   FileText,
@@ -170,7 +170,7 @@ export function Embudo({ serie, periodoId, tasas, onCambiarPeriodo }: EmbudoProp
   if (etapas.length === 0 || !hayCifras) {
     return (
       <HojaVacia
-        Icono={FunnelIcon}
+        Icono={Funnel}
         titulo="Todavía no hay embudo que dibujar"
         motivo={
           etapas.length === 0

@@ -22,7 +22,7 @@ export function Hoja({ className, ...props }: ComponentProps<'div'>) {
       data-slot="tarjeta-grafico"
       data-entrada-pendiente=""
       className={cn(
-        'relative overflow-hidden rounded-[14px] border border-border bg-card text-card-foreground',
+        'relative overflow-hidden cuenco-l border border-border bg-card text-card-foreground',
         className,
       )}
       {...props}
@@ -56,9 +56,8 @@ export function CabeceraHoja({
 
 /**
  * Un icono de Lucide en su pastilla: el trazo en el color de la entidad y
- * una aguada del mismo color detrás. Es el duotono de los iconos Phosphor
- * del resto del tablero hecho con dos piezas, para que las dos familias
- * convivan sin que el cambio de trazo se note.
+ * una aguada del mismo color detrás. Toda la casa usa Lucide;
+ * la pastilla distingue los iconos de los gráficos de los del cromo.
  */
 export function IconoEnPastilla({
   Icono,

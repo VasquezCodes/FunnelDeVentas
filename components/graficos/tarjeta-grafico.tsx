@@ -23,7 +23,7 @@ export function TarjetaGrafico({ className, ...props }: ComponentProps<'div'>) {
       // carrusel pliega los paneles ocultos y alargaba la página con scroll
       // muerto.
       className={cn(
-        'relative rounded-[14px] border border-border bg-card p-4 text-card-foreground sm:p-6',
+        'relative cuenco-l border border-border bg-card p-4 text-card-foreground sm:p-6',
         className,
       )}
       {...props}

@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from 'react'
-import { CaretLeftIcon, CaretRightIcon, XIcon } from '@phosphor-icons/react/ssr'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 import {
   CeldaFicha,
@@ -148,7 +148,7 @@ export function EmbudoAmpliado({
       onClick={(evento) => {
         if (evento.target === evento.currentTarget) onCerrar()
       }}
-      className="aparecer m-auto max-h-[calc(100dvh-2rem)] w-[min(60rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
+      className="aparecer m-auto max-h-[calc(100dvh-2rem)] w-[min(60rem,calc(100vw-2rem))] overflow-y-auto cuenco-l border bg-card p-0 text-foreground shadow-(--sombra-alta) backdrop:bg-[color-mix(in_oklab,var(--foreground)_32%,transparent)]"
       style={{ borderColor: 'var(--border)' }}
     >
       {ficha && punto && abierta !== null && (
@@ -175,18 +175,18 @@ export function EmbudoAmpliado({
                 disabled={abierta === 0}
                 onClick={() => onCambiar(abierta - 1)}
               >
-                <CaretLeftIcon weight="bold" className="size-4" />
+                <ChevronLeft strokeWidth={2} className="size-4" />
               </BotonIcono>
               <BotonIcono
                 etiqueta="Ficha siguiente"
                 disabled={abierta === fichas.length - 1}
                 onClick={() => onCambiar(abierta + 1)}
               >
-                <CaretRightIcon weight="bold" className="size-4" />
+                <ChevronRight strokeWidth={2} className="size-4" />
               </BotonIcono>
               <span aria-hidden="true" className="mx-1 h-5 w-px" style={{ backgroundColor: 'var(--regla)' }} />
               <BotonIcono etiqueta="Cerrar" onClick={onCerrar}>
-                <XIcon weight="bold" className="size-4" />
+                <X strokeWidth={2} className="size-4" />
               </BotonIcono>
             </div>
           </div>
@@ -256,13 +256,13 @@ function PasoDeMes({
   const adelante = indice >= 0 && indice < periodos.length - 1 ? periodos[indice + 1] : null
 
   return (
-    <div className="flex items-center gap-0.5 rounded-full border p-0.75" style={{ borderColor: 'var(--border)' }}>
+    <div className="flex items-center gap-0.5 cuenco-s border p-0.75" style={{ borderColor: 'var(--border)' }}>
       <BotonIcono
         etiqueta={atras ? `Ir a ${atras.etiqueta}` : 'No hay mes anterior'}
         disabled={!atras}
         onClick={() => atras && onCambiar(atras.id)}
       >
-        <CaretLeftIcon weight="bold" className="size-4" />
+        <ChevronLeft strokeWidth={2} className="size-4" />
       </BotonIcono>
       {/* `inline-block` no es decorativo: a un elemento en línea no se le
           aplica ni `min-width` ni `transform`, así que sin esto ni el ancho se
@@ -281,7 +281,7 @@ function PasoDeMes({
         disabled={!adelante}
         onClick={() => adelante && onCambiar(adelante.id)}
       >
-        <CaretRightIcon weight="bold" className="size-4" />
+        <ChevronRight strokeWidth={2} className="size-4" />
       </BotonIcono>
     </div>
   )
@@ -305,7 +305,7 @@ function BotonIcono({
       title={etiqueta}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-35"
+      className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-35"
     >
       {children}
     </button>

@@ -64,7 +64,7 @@ import {
   type KeyboardEvent as EventoTecladoReact,
   type PointerEvent as EventoPunteroReact,
 } from 'react'
-import { ChartLineIcon } from '@phosphor-icons/react/ssr'
+import { ChartLine } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, Line, ReferenceLine, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer } from '@/components/ui/chart'
@@ -537,8 +537,8 @@ export function Tendencias({
           <Semaforo estado="sin-dato" tamano="md" />
         </div>
         <div className="mt-6 flex flex-col items-center justify-center gap-2 px-2 py-10 text-center">
-          <ChartLineIcon
-            weight="duotone"
+          <ChartLine
+            strokeWidth={1.5}
             className="size-7 text-muted-foreground"
             aria-hidden="true"
           />
@@ -586,13 +586,13 @@ export function Tendencias({
         />
       </div>
 
-      {/* La cifra, en la serif del mes de la cabecera del tablero. La `key`
+      {/* La cifra, en Geist Mono como toda cifra del plan de negocio. La `key`
           separa el nodo que cuenta en la entrada del que lee un mes
           señalado: una cuenta a medias no puede escribir encima de otro mes. */}
       <div className="mt-5">
         <p
           className={cn(
-            'font-display text-[2.75rem] leading-none font-normal tracking-[-0.02em] proportional-nums',
+            'cifra text-[2.75rem] leading-none font-medium tracking-[-0.02em]',
             lectura.apagada ? 'text-muted-foreground' : 'text-foreground',
           )}
         >
@@ -869,7 +869,7 @@ function ConmutadorRango({ rango, onCambiar }: { rango: Rango; onCambiar: (r: Ra
     <div
       role="group"
       aria-label="Meses que se ven"
-      className="flex items-center gap-0.5 rounded-full p-0.5"
+      className="flex items-center gap-0.5 rounded-md p-[3px]"
       style={{ background: 'color-mix(in oklab, var(--foreground) 5%, transparent)' }}
     >
       {RANGOS.map((r) => {
@@ -881,7 +881,7 @@ function ConmutadorRango({ rango, onCambiar }: { rango: Rango; onCambiar: (r: Ra
             aria-pressed={activo}
             onClick={() => onCambiar(r.id)}
             className={cn(
-              'h-7 rounded-full px-3 text-xs font-medium whitespace-nowrap',
+              'h-7 rounded-md px-3 text-xs font-medium whitespace-nowrap',
               'transition-[background-color,color,box-shadow] duration-200',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               activo
